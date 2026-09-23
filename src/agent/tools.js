@@ -262,6 +262,7 @@ export function createTools({ repo, llm }) {
       return {
         text,
         provider: response.provider,
+        model: response.model,
         tier: 'qwen',
         actions: [{ type: 'tool', name: 'qwen', detail: `${response.provider}:${response.model}` }],
       };

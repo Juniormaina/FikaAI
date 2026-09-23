@@ -4,7 +4,7 @@ import { loadConfig } from '../config.js';
 import { openDatabase } from '../storage/db.js';
 import { createRepo } from '../storage/repo.js';
 import { createConnectivity } from '../connectivity/connectivity.js';
-import { createDefaultLlm } from '../llm/provider.js';
+import { createDefaultLlm, MODELSCOPE_MODELS, assertAllowedModelScopeModel } from '../llm/provider.js';
 import { createHeuristicLocalModel } from '../agent/local-model.js';
 import { createOrchestrator } from '../agent/orchestrator.js';
 import { createGateway } from '../gateway/gateway.js';
@@ -31,7 +31,20 @@ export function createApp(options = {}) {
   const repo = createRepo(db);
   repo.ensureUser(config.defaultUserId, 'Local demo');
   const connectivity = createConnectivity(repo, config.connectivityMode);
-  const llm = options.llm ?? createDefaultLlm(config);
+  const llm = options.llm ?? createDefaultLlm(config, {
+    connectivity,
+    getModelScopeModel() {
+      const stored = repo.getSetting('modelscope_model');
+      if (stored) {
+        try {
+          return assertAllowedModelScopeModel(stored);
+        } catch {
+          // Fall through to configured default.
+        }
+      }
+      return config.modelscopeModel;
+    },
+  });
   const localModel = options.localModel ?? createHeuristicLocalModel();
   const agent = createOrchestrator({ repo, connectivity, llm, localModel });
   const gateway = createGateway({ repo, agent });
@@ -71,19 +84,56 @@ export function createApp(options = {}) {
     const llmStatus = typeof llm.status === 'function'
       ? await llm.status()
       : { provider: llm.name || 'unknown', available: false };
+    const modelscopeEntry = (llmStatus.providers || []).find((item) => item.provider === 'modelscope');
+    const ollamaEntry = (llmStatus.providers || []).find((item) => item.provider === 'ollama');
     res.json({
       ok: true,
+      status: 'ok',
       service: 'fikaai',
       storage: 'sqlite',
-      llmModel: config.ollamaModel,
+      connectivity: await connectivity.getMode(),
       llm: {
-        configuredModel: config.ollamaModel,
-        ollamaEnabled: config.ollamaEnabled,
-        ollamaAvailable: Boolean(llmStatus.available),
-        activeProvider: llmStatus.available ? 'ollama' : 'mock',
+        mode: config.llmProvider,
+        provider: llmStatus.lastProvider && llmStatus.lastProvider !== 'startup'
+          ? llmStatus.lastProvider
+          : (llmStatus.provider || 'mock'),
+        model: llmStatus.lastModel || llmStatus.model || null,
+        available: Boolean(llmStatus.available),
         reason: llmStatus.reason || null,
-        lastProvider: llmStatus.lastProvider || null,
+        ollama: {
+          model: config.ollamaModel,
+          enabled: config.ollamaEnabled,
+          available: Boolean(ollamaEntry?.available),
+          reason: ollamaEntry?.reason || null,
+        },
+        modelscope: {
+          configured: Boolean(config.modelscopeApiKey),
+          model: repo.getSetting('modelscope_model') || config.modelscopeModel,
+          available: Boolean(modelscopeEntry?.available),
+          reason: modelscopeEntry?.reason || null,
+        },
+        providers: llmStatus.providers || null,
       },
+    });
+  }));
+
+  app.get('/api/llm/models', wrap((req, res) => {
+    res.json({
+      provider: 'modelscope',
+      models: [...MODELSCOPE_MODELS],
+      configuredModel: repo.getSetting('modelscope_model') || config.modelscopeModel,
+      localOllamaModel: config.ollamaModel,
+      llmProviderMode: config.llmProvider,
+    });
+  }));
+
+  app.post('/api/llm/model', wrap((req, res) => {
+    const model = assertAllowedModelScopeModel(req.body?.model);
+    repo.setSetting('modelscope_model', model);
+    res.json({
+      ok: true,
+      configuredModel: model,
+      note: 'Hosted model preference updated for this local demo. Agent logic is unchanged.',
     });
   }));
 
@@ -97,6 +147,13 @@ export function createApp(options = {}) {
       queue: repo.listQueue(userId),
       messages: repo.listMessages(userId),
       activity: repo.listActivity(userId),
+      llm: {
+        mode: config.llmProvider,
+        modelscopeConfigured: Boolean(config.modelscopeApiKey),
+        modelscopeModel: repo.getSetting('modelscope_model') || config.modelscopeModel,
+        models: [...MODELSCOPE_MODELS],
+        ollamaModel: config.ollamaModel,
+      },
     });
   }));
 

@@ -10,7 +10,9 @@
   "scripts": {
     "dev": "node --watch src/server/index.js",
     "start": "node src/server/index.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "smoke:modelscope": "node scripts/smoke-modelscope.js",
+    "eval:qwen": "node scripts/eval-qwen.js"
   },
   "dependencies": {
     "express": "^4.21.2"

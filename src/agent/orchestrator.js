@@ -104,6 +104,7 @@ export function createOrchestrator({ repo, connectivity, llm, localModel }) {
         intent,
         tier: responseTier,
         provider: result.provider,
+        model: result.model,
         requiresSync: false,
         actions: [
           { type: 'tool', name: 'intent', detail: routeDetail },

@@ -1,6 +1,8 @@
 export const uiStrings = {
   en: {
-    tagline: 'One agent for web, SMS, and USSD. Local SQLite. No paid APIs.',
+    hostedModel: 'Hosted model',
+    hostedModelHint: 'Developer control only. Changes which ModelScope model the provider may use when online.',
+    tagline: 'One agent for web, SMS, and USSD. Local SQLite. Adaptive local/hosted intelligence.',
     online: 'Online',
     offline: 'Offline',
     language: 'Language',
@@ -68,7 +70,9 @@ export const uiStrings = {
     ],
   },
   sw: {
-    tagline: 'Wakala mmoja kwa wavuti, SMS, na USSD. SQLite ya kifaa. Hakuna API za kulipia.',
+    hostedModel: 'Mfano wa mtandaoni',
+    hostedModelHint: 'Kidhibiti cha onyesho tu. Kinabadilisha mfano wa ModelScope wakati uko mtandaoni.',
+    tagline: 'Wakala mmoja kwa wavuti, SMS, na USSD. SQLite ya kifaa. Akili ya hapa na ya mtandaoni.',
     online: 'Mtandaoni',
     offline: 'Nje ya mtandao',
     language: 'Lugha',

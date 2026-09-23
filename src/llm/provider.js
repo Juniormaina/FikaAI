@@ -1,5 +1,20 @@
 import { formatKes, formatQuantity } from '../i18n/format.js';
 import { t } from '../i18n/language.js';
+import { createModelScopeProvider } from './modelscope.js';
+import {
+  DEFAULT_MODELSCOPE_MODEL,
+  MODELSCOPE_MODELS,
+  assertAllowedModelScopeModel,
+  isAllowedModelScopeModel,
+} from './modelscope-models.js';
+
+export {
+  DEFAULT_MODELSCOPE_MODEL,
+  MODELSCOPE_MODELS,
+  assertAllowedModelScopeModel,
+  isAllowedModelScopeModel,
+  createModelScopeProvider,
+};
 
 export const SYSTEM_PROMPT = `You are FikaAI, an on-device assistant for people who may be using SMS or USSD.
 Reply briefly in the language requested by the LANGUAGE line (en, sw, or mixed).
@@ -59,6 +74,12 @@ function modelListed(models, model) {
 export function createMockLlm() {
   return {
     name: 'mock',
+    async isAvailable() {
+      return true;
+    },
+    async status() {
+      return { provider: 'mock', model: 'local-template', available: true, reason: 'ready' };
+    },
     async generate(request) {
       const prompt = request?.prompt || '';
       const language = (prompt.match(/^LANGUAGE:\s*(\w+)/m) || [])[1] || 'en';
@@ -140,66 +161,110 @@ export function createOllamaProvider({ baseUrl, model, enabled, logger = console
   };
 }
 
-export function createFallbackLlm(primary, fallback, { logger = console } = {}) {
+/**
+ * Tries providers in order. Never requires the agent to know which backend won.
+ */
+export function createProviderRouter(providers, { logger = console, mode = 'auto' } = {}) {
+  const chain = providers.filter(Boolean);
   let lastProvider = 'mock';
   let lastReason = 'startup';
+  let lastModel = null;
+
   return {
-    name: 'fallback',
+    name: 'router',
+    mode,
     async status() {
-      if (typeof primary.status === 'function') {
-        const status = await primary.status();
-        return {
-          ...status,
-          lastProvider,
-          lastReason,
-          fallback: 'mock',
-        };
+      const details = [];
+      for (const provider of chain) {
+        const status = typeof provider.status === 'function'
+          ? await provider.status()
+          : { provider: provider.name, available: await provider.isAvailable?.() };
+        details.push(status);
       }
-      return {
-        provider: primary.name,
+      const preferred = details.find((item) => item.available) || details[details.length - 1] || {
+        provider: 'mock',
         available: false,
+        reason: 'empty_chain',
+      };
+      return {
+        provider: preferred.provider,
+        model: preferred.model ?? lastModel,
+        available: Boolean(preferred.available),
+        reason: preferred.reason || null,
+        mode,
         lastProvider,
         lastReason,
-        fallback: 'mock',
+        lastModel,
+        providers: details.map((item) => ({
+          provider: item.provider,
+          model: item.model ?? null,
+          available: Boolean(item.available),
+          reason: item.reason || null,
+          configured: item.configured,
+        })),
       };
     },
     async generate(request) {
-      if (await primary.isAvailable()) {
+      const errors = [];
+      for (const provider of chain) {
+        const ready = typeof provider.isAvailable === 'function'
+          ? await provider.isAvailable()
+          : true;
+        if (!ready) {
+          const status = typeof provider.status === 'function' ? await provider.status() : null;
+          errors.push(`${provider.name}:${status?.reason || 'unavailable'}`);
+          continue;
+        }
         try {
-          const result = await primary.generate(request);
-          lastProvider = result.provider || primary.name;
-          lastReason = 'ollama';
+          const result = await provider.generate(request);
+          lastProvider = result.provider || provider.name;
+          lastModel = result.model || null;
+          lastReason = 'ok';
           return result;
         } catch (error) {
-          lastProvider = 'mock';
-          lastReason = error instanceof Error ? error.message : 'ollama_error';
-          logger.warn(
-            `[fikaai] Ollama request failed (${lastReason}). Falling back to provider=mock.`,
-          );
+          const message = error instanceof Error ? error.message : 'error';
+          errors.push(`${provider.name}:${message}`);
+          logger.warn(`[fikaai] Provider ${provider.name} failed (${message}). Trying next.`);
         }
-      } else {
-        const status = typeof primary.status === 'function' ? await primary.status() : null;
-        lastProvider = 'mock';
-        lastReason = status?.reason || 'ollama_unavailable';
-        logger.warn(
-          `[fikaai] Ollama unavailable (${lastReason}). Using provider=mock.`,
-        );
       }
-      const result = await fallback.generate(request);
-      return { ...result, provider: 'mock', fallbackReason: lastReason };
+      lastProvider = 'mock';
+      lastModel = 'local-template';
+      lastReason = errors.join(' | ') || 'no_provider';
+      logger.warn(`[fikaai] Falling back to provider=mock (${lastReason}).`);
+      const mock = createMockLlm();
+      const result = await mock.generate(request);
+      return { ...result, fallbackReason: lastReason };
     },
   };
 }
 
-export function createDefaultLlm(config, { logger = console } = {}) {
-  return createFallbackLlm(
-    createOllamaProvider({
-      baseUrl: config.ollamaBaseUrl,
-      model: config.ollamaModel,
-      enabled: config.ollamaEnabled,
-      logger,
-    }),
-    createMockLlm(),
-    { logger },
-  );
+export function createDefaultLlm(config, { connectivity = null, logger = console, getModelScopeModel = null } = {}) {
+  const mode = String(config.llmProvider || 'auto').toLowerCase();
+  const mock = createMockLlm();
+  const ollama = createOllamaProvider({
+    baseUrl: config.ollamaBaseUrl,
+    model: config.ollamaModel,
+    enabled: config.ollamaEnabled,
+    logger,
+  });
+  const modelscope = createModelScopeProvider({
+    baseUrl: config.modelscopeBaseUrl,
+    apiKey: config.modelscopeApiKey,
+    getModel: getModelScopeModel || (() => config.modelscopeModel),
+    connectivity,
+    logger,
+  });
+
+  if (mode === 'mock') {
+    return createProviderRouter([mock], { logger, mode });
+  }
+  if (mode === 'ollama') {
+    return createProviderRouter([ollama, mock], { logger, mode });
+  }
+  if (mode === 'modelscope') {
+    // Prefer hosted when forced; fall back to local Ollama, then mock.
+    return createProviderRouter([modelscope, ollama, mock], { logger, mode });
+  }
+  // auto: online hosted brain first when configured, else local Ollama, else mock.
+  return createProviderRouter([modelscope, ollama, mock], { logger, mode: 'auto' });
 }

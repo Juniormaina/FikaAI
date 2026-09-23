@@ -44,7 +44,8 @@ This repository’s current MVP includes:
 * local SQLite storage
 * offline connectivity simulation
 * offline request queue and synchronization
-* local Ollama/Qwen integration (with a template fallback if Ollama is unavailable)
+* local Ollama/Qwen2.5:3b integration
+* optional ModelScope hosted Qwen 3.x via a single provider abstraction (`LLM_PROVIDER=auto|ollama|modelscope|mock`)
 * English and Kiswahili foundations
 
 ## What Is Not Yet Implemented
@@ -54,3 +55,4 @@ This repository’s current MVP includes:
 * voice/IVR
 * production deployment
 * large-scale multilingual support beyond English and Kiswahili foundations
+* treating FikaAI as a multi-model marketplace (models remain interchangeable provider backends)

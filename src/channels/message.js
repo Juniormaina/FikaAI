@@ -18,6 +18,7 @@ import crypto from 'node:crypto';
  * @property {boolean} [requiresSync]
  * @property {'rules'|'local'|'qwen'} [tier]
  * @property {string} [provider]
+ * @property {string} [model]
  */
 
 export function createUserMessage(userId, channel, text, metadata = {}) {

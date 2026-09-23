@@ -105,6 +105,7 @@ function replyMeta(message) {
   let tier = tierLabel(message.tier);
   if (message.provider === 'mock') tier = s('tierTemplate');
   if (message.provider === 'ollama') tier = s('tierQwen');
+  if (message.provider === 'modelscope') tier = `${s('tierQwen')} · ModelScope`;
   return message.intent ? `${tier} · ${message.intent}` : tier;
 }
 
@@ -271,6 +272,26 @@ function formatAmount(amount) {
   return `KSh ${rounded.toLocaleString('en-KE')}`;
 }
 
+function renderHostedModel(llm) {
+  const field = $('#hosted-model-field');
+  const select = $('#hosted-model');
+  if (!field || !select) return;
+  const show = Boolean(llm?.modelscopeConfigured);
+  field.hidden = !show;
+  if (!show) return;
+  const models = llm.models || [];
+  const current = llm.modelscopeModel || models[0] || '';
+  select.replaceChildren();
+  for (const model of models) {
+    const option = document.createElement('option');
+    option.value = model;
+    option.textContent = model.replace('Qwen-Ambassador/', '');
+    if (model === current) option.selected = true;
+    select.append(option);
+  }
+  select.title = s('hostedModelHint');
+}
+
 function renderAll(data) {
   state.mode = data.mode;
   state.lang = data.user.language === 'sw' ? 'sw' : state.lang;
@@ -278,6 +299,7 @@ function renderAll(data) {
     state.lang = data.user.language;
   }
   applyChrome();
+  renderHostedModel(data.llm);
   renderMessages(data.messages || []);
   renderActivity(data.activity || []);
   renderQueue(data.queue || []);
@@ -404,6 +426,19 @@ $('#language').addEventListener('change', async (event) => {
     });
     state.lang = event.target.value === 'sw' ? 'sw' : 'en';
     await loadUssd();
+    await refresh();
+  } catch (error) {
+    showNotice(error.message);
+  }
+});
+
+$('#hosted-model')?.addEventListener('change', async (event) => {
+  try {
+    await api('/api/llm/model', {
+      method: 'POST',
+      body: JSON.stringify({ model: event.target.value }),
+    });
+    showNotice(s('hostedModelHint'));
     await refresh();
   } catch (error) {
     showNotice(error.message);
