@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#1d6b45" />
+    <meta name="description" content="FikaAI local demo for web, SMS, and USSD." />
+    <title>FikaAI</title>
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body data-mode="online">
+    <header class="top">
+      <div class="brand">
+        <p class="eyebrow">Offline-first agent</p>
+        <h1>FikaAI</h1>
+        <p class="sub" data-i18n="tagline">One agent for web, SMS, and USSD. Local SQLite. No paid APIs.</p>
+      </div>
+      <div class="controls">
+        <label class="field">
+          <span data-i18n="language">Language</span>
+          <select id="language">
+            <option value="en">English</option>
+            <option value="sw">Kiswahili</option>
+          </select>
+        </label>
+        <div class="field">
+          <span data-i18n="connectivity">Connectivity</span>
+          <div class="switch" role="group" aria-label="Connectivity">
+            <button type="button" id="btn-online" aria-pressed="true" data-i18n="online">Online</button>
+            <button type="button" id="btn-offline" aria-pressed="false" data-i18n="offline">Offline</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <p id="offline-banner" class="banner" hidden data-i18n="offlineBanner"></p>
+    <p id="notice" class="notice" hidden></p>
+
+    <nav class="tabs" role="tablist">
+      <button type="button" data-tab="web" role="tab" aria-selected="true" data-i18n="chat">Web</button>
+      <button type="button" data-tab="sms" role="tab" aria-selected="false" data-i18n="sms">SMS</button>
+      <button type="button" data-tab="ussd" role="tab" aria-selected="false" data-i18n="ussd">USSD</button>
+      <button type="button" data-tab="activity" role="tab" aria-selected="false" data-i18n="activity">Activity</button>
+      <button type="button" data-tab="queue" role="tab" aria-selected="false" data-i18n="queue">Queue</button>
+      <button type="button" data-tab="data" role="tab" aria-selected="false" data-i18n="data">Data</button>
+    </nav>
+
+    <main>
+      <section id="panel-web" data-panel="web">
+        <p class="intro" data-i18n="webIntro"></p>
+        <div id="examples" class="examples"></div>
+        <div id="web-log" class="log" aria-live="polite"></div>
+        <form id="web-form" class="composer">
+          <label class="sr-only" for="web-input" data-i18n="placeholder">Ask FikaAI</label>
+          <input id="web-input" name="text" maxlength="1000" autocomplete="off" data-i18n-placeholder="placeholder" />
+          <button type="submit" data-i18n="send">Send</button>
+        </form>
+      </section>
+
+      <section id="panel-sms" data-panel="sms" hidden>
+        <p class="intro" data-i18n="smsIntro"></p>
+        <div class="phone">
+          <div class="phone-bar" data-i18n="smsTitle">FikaAI SMS Simulator</div>
+          <div id="sms-log" class="sms-log" aria-live="polite"></div>
+          <form id="sms-form" class="composer">
+            <label class="sr-only" for="sms-input">SMS</label>
+            <input id="sms-input" name="text" maxlength="1000" autocomplete="off" data-i18n-placeholder="smsPlaceholder" />
+            <button type="submit" data-i18n="send">Send</button>
+          </form>
+        </div>
+      </section>
+
+      <section id="panel-ussd" data-panel="ussd" hidden>
+        <p class="intro" data-i18n="ussdIntro"></p>
+        <div class="phone ussd-phone">
+          <div class="phone-bar" data-i18n="ussdTitle">FikaAI USSD Simulator</div>
+          <pre id="ussd-screen" class="ussd-screen" aria-live="polite"></pre>
+          <form id="ussd-form" class="composer">
+            <label class="sr-only" for="ussd-input">USSD</label>
+            <input id="ussd-input" name="input" maxlength="1000" autocomplete="off" data-i18n-placeholder="ussdPlaceholder" />
+            <button type="submit" data-i18n="select">Select</button>
+          </form>
+        </div>
+      </section>
+
+      <section id="panel-activity" data-panel="activity" hidden>
+        <p class="intro" data-i18n="activityIntro"></p>
+        <ol id="activity-list" class="timeline"></ol>
+      </section>
+
+      <section id="panel-queue" data-panel="queue" hidden>
+        <p class="intro" data-i18n="queueIntro"></p>
+        <div class="row-actions">
+          <button type="button" id="btn-sync" data-i18n="sync">Sync now</button>
+        </div>
+        <div id="queue-list" class="stack"></div>
+      </section>
+
+      <section id="panel-data" data-panel="data" hidden>
+        <p class="intro" data-i18n="dataIntro"></p>
+        <div class="row-actions">
+          <button type="button" id="btn-clear" data-i18n="clear">Clear demo data</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n="item">Item</th>
+                <th data-i18n="quantity">Quantity</th>
+                <th data-i18n="amount">Amount</th>
+                <th data-i18n="date">Date</th>
+                <th data-i18n="actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="data-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot" data-i18n="footer"></footer>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

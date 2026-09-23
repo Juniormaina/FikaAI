@@ -1,0 +1,21 @@
+{
+  "name": "fikaai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Offline-first local AI agent for web, SMS, and USSD.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node --watch src/server/index.js",
+    "start": "node src/server/index.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4"
+  }
+}
