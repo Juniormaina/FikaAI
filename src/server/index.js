@@ -6,10 +6,21 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 loadEnvFile(path.join(root, '.env'));
 
 const { createApp } = await import('./app.js');
-const { app, config } = createApp();
+const { app, config, llm } = createApp();
 
-const server = app.listen(config.port, config.host, () => {
+const server = app.listen(config.port, config.host, async () => {
   console.log(`FikaAI is running at http://${config.host}:${config.port}`);
+  console.log(`Configured Ollama model: ${config.ollamaModel}`);
+  if (typeof llm.status === 'function') {
+    const status = await llm.status();
+    if (status.available) {
+      console.log(`LLM provider ready: ollama (${config.ollamaModel})`);
+    } else {
+      console.warn(
+        `LLM provider fallback: mock (${status.reason || 'ollama unavailable'}). Simple local flows still work.`,
+      );
+    }
+  }
 });
 
 function shutdown() {

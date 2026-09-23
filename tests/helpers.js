@@ -13,7 +13,7 @@ export function createTestApp(overrides = {}) {
       port: 0,
       ollamaEnabled: false,
       ollamaBaseUrl: 'http://127.0.0.1:9',
-      ollamaModel: 'qwen2.5:1.5b',
+      ollamaModel: 'qwen2.5:3b',
       connectivityMode,
       databasePath: ':memory:',
       root: process.cwd(),

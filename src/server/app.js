@@ -67,14 +67,25 @@ export function createApp(options = {}) {
     return text;
   }
 
-  app.get('/api/health', (req, res) => {
+  app.get('/api/health', wrap(async (req, res) => {
+    const llmStatus = typeof llm.status === 'function'
+      ? await llm.status()
+      : { provider: llm.name || 'unknown', available: false };
     res.json({
       ok: true,
       service: 'fikaai',
       storage: 'sqlite',
       llmModel: config.ollamaModel,
+      llm: {
+        configuredModel: config.ollamaModel,
+        ollamaEnabled: config.ollamaEnabled,
+        ollamaAvailable: Boolean(llmStatus.available),
+        activeProvider: llmStatus.available ? 'ollama' : 'mock',
+        reason: llmStatus.reason || null,
+        lastProvider: llmStatus.lastProvider || null,
+      },
     });
-  });
+  }));
 
   app.get('/api/bootstrap', wrap(async (req, res) => {
     const userId = readUserId(req.query.userId);

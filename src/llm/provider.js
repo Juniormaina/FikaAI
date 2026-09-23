@@ -47,6 +47,15 @@ function summarize(records, language) {
   return `${intro}\n${lines.join('\n')}\n${t(lang, 'explainTotal', { amount: total })}`;
 }
 
+function modelListed(models, model) {
+  const wanted = String(model || '').trim();
+  if (!wanted) return false;
+  return (models || []).some((entry) => {
+    const name = String(entry?.name || entry?.model || '');
+    return name === wanted || name.startsWith(`${wanted}@`);
+  });
+}
+
 export function createMockLlm() {
   return {
     name: 'mock',
@@ -63,21 +72,47 @@ export function createMockLlm() {
   };
 }
 
-export function createOllamaProvider({ baseUrl, model, enabled }) {
-  let cache = { at: 0, ok: false };
+export function createOllamaProvider({ baseUrl, model, enabled, logger = console }) {
+  let cache = { at: 0, ok: false, reason: 'unchecked' };
   return {
     name: 'ollama',
     model,
     async isAvailable() {
-      if (!enabled) return false;
+      if (!enabled) {
+        cache = { at: Date.now(), ok: false, reason: 'disabled' };
+        return false;
+      }
       if (Date.now() - cache.at < 5000) return cache.ok;
       try {
-        const response = await fetch(`${baseUrl}/api/tags`, { signal: AbortSignal.timeout(400) });
-        cache = { at: Date.now(), ok: response.ok };
-      } catch {
-        cache = { at: Date.now(), ok: false };
+        const response = await fetch(`${baseUrl}/api/tags`, { signal: AbortSignal.timeout(800) });
+        if (!response.ok) {
+          cache = { at: Date.now(), ok: false, reason: `tags_http_${response.status}` };
+          return false;
+        }
+        const body = await response.json();
+        const ok = modelListed(body.models, model);
+        cache = {
+          at: Date.now(),
+          ok,
+          reason: ok ? 'ready' : `model_missing:${model}`,
+        };
+      } catch (error) {
+        cache = {
+          at: Date.now(),
+          ok: false,
+          reason: error instanceof Error ? error.message : 'unreachable',
+        };
       }
       return cache.ok;
+    },
+    async status() {
+      await this.isAvailable();
+      return {
+        provider: 'ollama',
+        model,
+        available: cache.ok,
+        reason: cache.reason,
+      };
     },
     async generate(request) {
       const response = await fetch(`${baseUrl}/api/generate`, {
@@ -90,40 +125,81 @@ export function createOllamaProvider({ baseUrl, model, enabled }) {
           stream: false,
           options: { temperature: request.temperature ?? 0.2 },
         }),
-        signal: AbortSignal.timeout(30000),
+        signal: AbortSignal.timeout(60000),
       });
-      if (!response.ok) throw new Error(`Ollama responded with ${response.status}`);
+      if (!response.ok) {
+        const detail = await response.text().catch(() => '');
+        throw new Error(`Ollama responded with ${response.status}${detail ? `: ${detail.slice(0, 120)}` : ''}`);
+      }
       const body = await response.json();
       const text = String(body.response || '').trim();
       if (!text) throw new Error('Ollama returned an empty response');
       return { text, provider: 'ollama', model };
     },
+    logger,
   };
 }
 
-export function createFallbackLlm(primary, fallback) {
+export function createFallbackLlm(primary, fallback, { logger = console } = {}) {
+  let lastProvider = 'mock';
+  let lastReason = 'startup';
   return {
     name: 'fallback',
+    async status() {
+      if (typeof primary.status === 'function') {
+        const status = await primary.status();
+        return {
+          ...status,
+          lastProvider,
+          lastReason,
+          fallback: 'mock',
+        };
+      }
+      return {
+        provider: primary.name,
+        available: false,
+        lastProvider,
+        lastReason,
+        fallback: 'mock',
+      };
+    },
     async generate(request) {
       if (await primary.isAvailable()) {
         try {
-          return await primary.generate(request);
-        } catch {
-          // Local template still answers from stored records.
+          const result = await primary.generate(request);
+          lastProvider = result.provider || primary.name;
+          lastReason = 'ollama';
+          return result;
+        } catch (error) {
+          lastProvider = 'mock';
+          lastReason = error instanceof Error ? error.message : 'ollama_error';
+          logger.warn(
+            `[fikaai] Ollama request failed (${lastReason}). Falling back to provider=mock.`,
+          );
         }
+      } else {
+        const status = typeof primary.status === 'function' ? await primary.status() : null;
+        lastProvider = 'mock';
+        lastReason = status?.reason || 'ollama_unavailable';
+        logger.warn(
+          `[fikaai] Ollama unavailable (${lastReason}). Using provider=mock.`,
+        );
       }
-      return fallback.generate(request);
+      const result = await fallback.generate(request);
+      return { ...result, provider: 'mock', fallbackReason: lastReason };
     },
   };
 }
 
-export function createDefaultLlm(config) {
+export function createDefaultLlm(config, { logger = console } = {}) {
   return createFallbackLlm(
     createOllamaProvider({
       baseUrl: config.ollamaBaseUrl,
       model: config.ollamaModel,
       enabled: config.ollamaEnabled,
+      logger,
     }),
     createMockLlm(),
+    { logger },
   );
 }

@@ -15,7 +15,7 @@ export function loadConfig(env = process.env) {
     host: env.HOST || '127.0.0.1',
     databasePath: env.DATABASE_PATH || path.join(root, 'data', 'fikaai.sqlite'),
     ollamaBaseUrl: env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434',
-    ollamaModel: env.OLLAMA_MODEL || 'qwen2.5:1.5b',
+    ollamaModel: env.OLLAMA_MODEL || 'qwen2.5:3b',
     ollamaEnabled: flag(env.OLLAMA_ENABLED, true),
     defaultUserId: env.DEFAULT_USER_ID || 'demo-user',
     connectivityMode: String(env.CONNECTIVITY_MODE || '').toLowerCase() === 'offline' ? 'offline' : 'online',
