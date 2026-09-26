@@ -97,6 +97,23 @@ flowchart TD
   IDB <--> Sync[Synchronization]
 ```
 
+### Technologies
+
+| Layer | Technology |
+| --- | --- |
+| Runtime | Node.js 22+ |
+| Backend | Express |
+| Frontend | Vanilla JavaScript PWA (`public/`) |
+| Database | SQLite via `node:sqlite` |
+| AI (hosted) | ModelScope OpenAI-compatible API · Qwen 3.x |
+| AI (local) | Ollama · `qwen2.5:3b` |
+| AI (fallback) | Deterministic keyword intent mapping · mock LLM |
+| Offline / PWA | Service worker · Web App Manifest · IndexedDB |
+| Sync | Browser `online`/`offline` events · journey action queue |
+| Secondary channels | SMS simulator · USSD simulator |
+| Tests | Vitest |
+| Package manager | npm |
+
 ### Installation
 
 Requirements: Node.js 22+.
