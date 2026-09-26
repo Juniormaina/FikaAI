@@ -1,11 +1,11 @@
 {
   "name": "FikaAI",
   "short_name": "FikaAI",
-  "description": "Local offline-first agent for web, SMS, and USSD.",
+  "description": "Healthcare access that works when connectivity doesn't.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f3efe6",
-  "theme_color": "#1d6b45",
+  "background_color": "#e8f2f0",
+  "theme_color": "#0b5f5c",
   "icons": [
     {
       "src": "/icon.svg",

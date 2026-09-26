@@ -1,52 +1,85 @@
-import { uiStrings } from './ui-strings.js';
+/**
+ * FikaAI PWA — healthcare access vertical slice.
+ * IndexedDB caches journey state for true offline continuity.
+ */
 
 const userId = 'demo-user';
+const DB_NAME = 'fikaai-care';
+const DB_VERSION = 1;
+const STORE = 'journey';
+
 const state = {
-  lang: 'en',
+  tab: 'care',
   mode: 'online',
-  tab: 'web',
-  ussdDisplay: '',
-  ussdLoaded: false,
-  editing: null,
+  browserOnline: navigator.onLine,
+  intent: null,
+  queryText: '',
+  providers: [],
+  selectedProvider: null,
+  journey: null,
+  actions: [],
+  syncing: false,
+  feedbackSent: false,
 };
 
-const $ = (selector) => document.querySelector(selector);
+const $ = (sel) => document.querySelector(sel);
 
-function s(key) {
-  return uiStrings[state.lang]?.[key] ?? uiStrings.en[key] ?? '';
+function openIdb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(STORE)) {
+        db.createObjectStore(STORE, { keyPath: 'key' });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
 }
 
-function applyChrome() {
-  document.documentElement.lang = state.lang === 'sw' ? 'sw' : 'en';
-  document.body.dataset.mode = state.mode;
-  document.querySelectorAll('[data-i18n]').forEach((node) => {
-    const value = s(node.dataset.i18n);
-    if (value) node.textContent = value;
+async function idbSet(key, value) {
+  const db = await openIdb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).put({ key, value, updatedAt: new Date().toISOString() });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
   });
-  document.querySelectorAll('[data-i18n-placeholder]').forEach((node) => {
-    node.placeholder = s(node.dataset.i18nPlaceholder);
-  });
-  $('#btn-online').setAttribute('aria-pressed', String(state.mode === 'online'));
-  $('#btn-offline').setAttribute('aria-pressed', String(state.mode === 'offline'));
-  $('#offline-banner').hidden = state.mode !== 'offline';
-  $('#language').value = state.lang;
-  renderExamples();
 }
 
-function renderExamples() {
-  const host = $('#examples');
-  host.replaceChildren();
-  const label = document.createElement('span');
-  label.className = 'meta';
-  label.textContent = s('examplesLabel');
-  host.append(label);
-  for (const example of s('examples')) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = example;
-    button.addEventListener('click', () => sendWeb(example));
-    host.append(button);
-  }
+async function idbGet(key) {
+  const db = await openIdb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readonly');
+    const req = tx.objectStore(STORE).get(key);
+    req.onsuccess = () => resolve(req.result?.value ?? null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function cacheJourneyLocally() {
+  if (!state.journey) return;
+  await idbSet('activeJourney', {
+    journey: state.journey,
+    actions: state.actions,
+    selectedProvider: state.selectedProvider || state.journey.providerSnapshot,
+    intent: state.intent,
+    queryText: state.queryText,
+    feedbackSent: state.feedbackSent,
+  });
+}
+
+async function restoreJourneyFromCache() {
+  const cached = await idbGet('activeJourney');
+  if (!cached?.journey) return false;
+  state.journey = cached.journey;
+  state.actions = cached.actions || [];
+  state.selectedProvider = cached.selectedProvider || null;
+  state.intent = cached.intent || null;
+  state.queryText = cached.queryText || '';
+  state.feedbackSent = Boolean(cached.feedbackSent);
+  return true;
 }
 
 async function api(path, options = {}) {
@@ -65,6 +98,23 @@ function showNotice(text) {
   notice.textContent = text || '';
 }
 
+function setBrowserOnline(online) {
+  state.browserOnline = online;
+  document.body.dataset.browser = online ? 'online' : 'offline';
+  $('#browser-label').textContent = online ? 'Online' : 'Offline';
+  $('#offline-banner').hidden = online;
+  $('#offline-box').hidden = online || !state.journey;
+  renderJourneyMeta();
+  updateSyncControls();
+}
+
+function applyBackendMode(mode) {
+  state.mode = mode === 'offline' ? 'offline' : 'online';
+  document.body.dataset.mode = state.mode;
+  $('#btn-online').setAttribute('aria-pressed', String(state.mode === 'online'));
+  $('#btn-offline').setAttribute('aria-pressed', String(state.mode === 'offline'));
+}
+
 function showTab(name) {
   state.tab = name;
   document.querySelectorAll('[data-panel]').forEach((panel) => {
@@ -73,397 +123,521 @@ function showTab(name) {
   document.querySelectorAll('[data-tab]').forEach((tab) => {
     tab.setAttribute('aria-selected', String(tab.dataset.tab === name));
   });
+  if (name === 'journey') renderJourney();
 }
 
-function bubble(parent, message) {
-  const node = document.createElement('article');
-  const queued = message.direction === 'outbound' && /^(Offline:|Haupo mtandaoni)/.test(message.text);
-  node.className = `bubble ${message.direction === 'inbound' ? 'user' : 'agent'}${queued ? ' queued' : ''}`;
-  const who = document.createElement('div');
-  who.className = 'who';
-  who.textContent = message.direction === 'inbound' ? s('you') : s('agent');
-  const body = document.createElement('p');
-  body.textContent = message.text;
-  node.append(who, body);
-  if (message.direction === 'outbound' && message.tier) {
-    const meta = document.createElement('div');
-    meta.className = 'meta';
-    meta.textContent = replyMeta(message);
-    node.append(meta);
-  }
-  parent.append(node);
+function showCareView(view) {
+  $('#view-search').hidden = view !== 'search';
+  $('#view-facility').hidden = view !== 'facility';
 }
 
-function tierLabel(tier) {
-  if (tier === 'local') return s('tierLocal');
-  if (tier === 'qwen') return s('tierQwen');
-  if (tier === 'rules') return s('tierRules');
-  return tier || '';
-}
-
-function replyMeta(message) {
-  let tier = tierLabel(message.tier);
-  if (message.provider === 'mock') tier = s('tierTemplate');
-  if (message.provider === 'ollama') tier = s('tierQwen');
-  if (message.provider === 'modelscope') tier = `${s('tierQwen')} · ModelScope`;
-  return message.intent ? `${tier} · ${message.intent}` : tier;
-}
-
-function syncNotice(count) {
-  if (count === 1) return s('syncedOne');
-  return s('syncedMany').replace('{count}', String(count));
-}
-
-function renderMessages(messages) {
-  const web = $('#web-log');
-  const sms = $('#sms-log');
-  web.replaceChildren();
-  sms.replaceChildren();
-  const webMessages = messages.filter((message) => message.channel === 'web');
-  const smsMessages = messages.filter((message) => message.channel === 'sms');
-  if (!webMessages.length) web.append(empty(s('emptyChat')));
-  if (!smsMessages.length) sms.append(empty(s('emptySms')));
-  for (const message of webMessages) bubble(web, message);
-  for (const message of smsMessages) {
-    const item = document.createElement('div');
-    item.className = `sms-item ${message.direction === 'inbound' ? 'user' : 'agent'}`;
-    const who = document.createElement('div');
-    who.className = 'who';
-    who.textContent = message.direction === 'inbound' ? s('userLabel') : 'FikaAI';
-    const body = document.createElement('div');
-    body.className = 'body';
-    body.textContent = message.text;
-    item.append(who, body);
-    if (message.direction === 'outbound') {
-      const meta = document.createElement('div');
-      meta.className = 'sms-meta';
-      const count = Math.max(1, Math.ceil(message.text.length / 160));
-      meta.textContent = s('segments').replace('{count}', String(count));
-      item.append(meta);
-    }
-    sms.append(item);
-  }
-}
-
-function empty(text) {
-  const node = document.createElement('p');
-  node.className = 'empty';
-  node.textContent = text;
-  return node;
-}
-
-function renderActivity(activity) {
-  const list = $('#activity-list');
-  list.replaceChildren();
-  if (!activity.length) {
-    const item = document.createElement('li');
-    item.append(empty(s('emptyActivity')));
-    list.append(item);
+function renderIntent(result) {
+  const panel = $('#intent-panel');
+  if (!result?.intent) {
+    panel.hidden = true;
+    panel.replaceChildren();
     return;
   }
-  for (const entry of activity) {
-    const item = document.createElement('li');
-    item.className = 'card';
-    const top = document.createElement('div');
-    const pill = document.createElement('span');
-    pill.className = `pill ${entry.tier || ''}`;
-    pill.textContent = entry.step;
-    top.append(pill);
-    if (entry.tier) {
-      const tier = document.createElement('span');
-      tier.className = 'meta';
-      tier.textContent = ` ${tierLabel(entry.tier)}`;
-      top.append(tier);
-    }
-    const detail = document.createElement('p');
-    detail.textContent = entry.detail;
-    item.append(top, detail);
-    list.append(item);
-  }
+  panel.hidden = false;
+  const source = result.source || result.intent.source || 'unknown';
+  const note = result.aiUnavailable
+    ? 'AI unavailable — using deterministic fallback intent.'
+    : `Intent extracted via ${source}.`;
+  panel.innerHTML = `
+    <div><strong>Understood need</strong> · ${note}</div>
+    <code>${JSON.stringify({
+      specialty: result.intent.specialty,
+      location: result.intent.location,
+      request_type: result.intent.request_type,
+      urgency: result.intent.urgency,
+      confidence: result.intent.confidence,
+    }, null, 2)}</code>
+  `;
 }
 
-function renderQueue(items) {
-  const list = $('#queue-list');
-  list.replaceChildren();
-  if (!items.length) {
-    list.append(empty(s('emptyQueue')));
+function providerCardHtml(provider, { detail = false } = {}) {
+  const specialty = (provider.specialties || []).join(', ') || 'General';
+  return `
+    <h3>${escapeHtml(provider.facilityName)}</h3>
+    <div class="spec">${escapeHtml(specialty)}</div>
+    <p class="meta">${escapeHtml(provider.location)} · ${escapeHtml(provider.facilityType || '')}</p>
+    <dl>
+      <dt>Specialist</dt><dd>${escapeHtml(provider.specialistName)}</dd>
+      <dt>Availability</dt><dd>${escapeHtml(provider.availabilityStatus)}</dd>
+      <dt>Appointment</dt><dd>${provider.appointmentRequired ? 'Required' : 'Not required'}</dd>
+      <dt>Referral</dt><dd>${provider.referralRequired ? 'Required' : 'Not required'}</dd>
+      <dt>Last updated</dt><dd>${escapeHtml(provider.lastUpdatedLabel || provider.lastUpdated)}</dd>
+    </dl>
+    ${detail && provider.availabilityNote ? `<p class="meta">${escapeHtml(provider.availabilityNote)}</p>` : ''}
+    ${detail && provider.instructions ? `<p><strong>Instructions:</strong> ${escapeHtml(provider.instructions)}</p>` : ''}
+    ${detail && provider.contactInformation ? `<p class="meta">${escapeHtml(provider.contactInformation)}</p>` : ''}
+    <span class="demo-badge">Demo data</span>
+    ${detail ? `<div class="warning">${escapeHtml(provider.dataSource || 'Synthetic provider data — for demonstration only')}</div>` : ''}
+  `;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
+}
+
+function renderResults(providers) {
+  const host = $('#results');
+  host.replaceChildren();
+  if (!providers.length) {
+    const empty = document.createElement('p');
+    empty.className = 'empty';
+    empty.textContent = 'We couldn\'t find a matching provider in the demo directory.';
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.textContent = 'Try another search';
+    retry.addEventListener('click', () => {
+      $('#care-input').focus();
+      host.replaceChildren();
+      $('#intent-panel').hidden = true;
+    });
+    host.append(empty, retry);
     return;
   }
-  for (const item of items) {
+  for (const provider of providers) {
     const card = document.createElement('article');
-    card.className = 'card';
-    const status = document.createElement('div');
-    const pill = document.createElement('span');
-    pill.className = `pill ${item.status}`;
-    pill.textContent = s(item.status) || item.status;
-    status.append(pill);
-    const request = document.createElement('p');
-    request.textContent = item.text;
-    card.append(status, request);
-    if (item.responseText) {
-      const reply = document.createElement('p');
-      reply.textContent = item.responseText;
-      card.append(reply);
-    }
-    list.append(card);
+    card.className = 'provider-card';
+    card.innerHTML = providerCardHtml(provider);
+    const cta = document.createElement('button');
+    cta.type = 'button';
+    cta.className = 'primary';
+    cta.textContent = 'View facility';
+    cta.addEventListener('click', () => openFacility(provider));
+    card.append(cta);
+    host.append(card);
   }
 }
 
-function renderData(records) {
-  const body = $('#data-body');
-  body.replaceChildren();
-  if (!records.length) {
-    const row = document.createElement('tr');
-    const cell = document.createElement('td');
-    cell.colSpan = 5;
-    cell.append(empty(s('emptyData')));
-    row.append(cell);
-    body.append(row);
+function openFacility(provider) {
+  state.selectedProvider = provider;
+  $('#facility-detail').innerHTML = providerCardHtml(provider, { detail: true });
+  showCareView('facility');
+}
+
+async function findCare(text) {
+  const query = String(text || '').trim();
+  if (!query) return;
+  state.queryText = query;
+  $('#emergency-panel').hidden = true;
+  showNotice('Searching…');
+  showCareView('search');
+
+  // Offline with no network: try cached providers from last search if specialty matches,
+  // otherwise explain limitation.
+  if (!state.browserOnline) {
+    showNotice('You\'re offline. Using local fallback search when possible.');
+  }
+
+  try {
+    const result = await api('/api/care/search', {
+      method: 'POST',
+      body: JSON.stringify({ userId, text: query }),
+    });
+
+    if (result.kind === 'emergency') {
+      showNotice('');
+      const panel = $('#emergency-panel');
+      panel.hidden = false;
+      panel.textContent = result.message;
+      $('#intent-panel').hidden = true;
+      $('#results').replaceChildren();
+      return;
+    }
+
+    state.intent = result.intent;
+    renderIntent(result);
+
+    if (result.kind === 'clarify') {
+      showNotice(result.message);
+      $('#results').replaceChildren();
+      return;
+    }
+
+    if (result.notice) showNotice(result.notice);
+    else if (result.kind === 'empty') showNotice(result.message);
+    else showNotice('');
+
+    state.providers = result.providers || [];
+    await idbSet('lastSearch', { query, intent: result.intent, providers: state.providers });
+    renderResults(state.providers);
+  } catch (error) {
+    // Network failure: fall back to cached search results if available.
+    const cached = await idbGet('lastSearch');
+    if (cached?.providers?.length) {
+      showNotice('You\'re offline. Showing saved information.');
+      state.intent = cached.intent;
+      state.providers = cached.providers;
+      renderIntent({ intent: cached.intent, source: 'cache', aiUnavailable: true });
+      renderResults(state.providers);
+      return;
+    }
+    showNotice(error.message || 'You\'re offline and this information hasn\'t been saved yet.');
+    $('#results').replaceChildren();
+  }
+}
+
+async function startJourney() {
+  if (!state.selectedProvider) return;
+  try {
+    const result = await api('/api/care/journeys', {
+      method: 'POST',
+      body: JSON.stringify({
+        userId,
+        providerId: state.selectedProvider.id,
+        intent: state.intent,
+        queryText: state.queryText,
+      }),
+    });
+    state.journey = result.journey;
+    state.actions = [];
+    state.feedbackSent = false;
+    await cacheJourneyLocally();
+    showTab('journey');
+    showNotice('Journey started. Provider information saved on this device.');
+  } catch (error) {
+    // If backend unreachable, still create a local-only journey for demo continuity.
+    const localJourney = {
+      id: `local-${Date.now()}`,
+      userId,
+      providerId: state.selectedProvider.id,
+      status: 'JOURNEY_STARTED',
+      syncStatus: 'pending',
+      intent: state.intent,
+      queryText: state.queryText,
+      providerSnapshot: state.selectedProvider,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      localOnly: true,
+    };
+    state.journey = localJourney;
+    state.actions = [];
+    state.feedbackSent = false;
+    await cacheJourneyLocally();
+    showTab('journey');
+    showNotice('Backend unavailable. Journey saved on this device and marked pending.');
+  }
+}
+
+function renderJourneyMeta() {
+  const meta = $('#journey-meta');
+  if (!state.journey) {
+    meta.replaceChildren();
     return;
   }
-  for (const record of records) {
-    const row = document.createElement('tr');
-    const item = document.createElement('td');
-    item.textContent = record.item;
-    const quantity = document.createElement('td');
-    quantity.textContent = record.quantity == null ? '' : `${record.quantity} ${record.unit || ''}`.trim();
-    const amount = document.createElement('td');
-    const date = document.createElement('td');
-    date.textContent = record.recordedOn;
-    const actions = document.createElement('td');
-    if (state.editing === record.id) {
-      const input = document.createElement('input');
-      input.type = 'number';
-      input.min = '1';
-      input.step = '1';
-      input.value = String(record.amountKes);
-      input.id = `edit-${record.id}`;
-      amount.append(input);
-      const save = document.createElement('button');
-      save.type = 'button';
-      save.className = 'mini';
-      save.textContent = s('save');
-      save.addEventListener('click', () => saveRecord(record.id, input.value));
-      actions.append(save);
-    } else {
-      amount.textContent = formatAmount(record.amountKes);
-      const edit = document.createElement('button');
-      edit.type = 'button';
-      edit.className = 'mini';
-      edit.textContent = s('edit');
-      edit.addEventListener('click', () => {
-        state.editing = record.id;
-        renderData(records);
+  const provider = state.journey.providerSnapshot || state.selectedProvider || {};
+  const connection = state.browserOnline ? 'Online' : 'Offline';
+  const sync = state.syncing ? 'Syncing' : (state.journey.syncStatus || 'synced');
+  meta.innerHTML = `
+    <div><strong>Facility:</strong> ${escapeHtml(provider.facilityName || 'Saved facility')}</div>
+    <div><strong>Specialist:</strong> ${escapeHtml(provider.specialistName || '—')}</div>
+    <div><strong>Connection:</strong> ${connection}</div>
+    <div><strong>Journey sync:</strong> ${escapeHtml(String(sync))}</div>
+    <div><strong>Last provider update:</strong> ${escapeHtml(provider.lastUpdatedLabel || provider.lastUpdated || '—')}</div>
+    <span class="demo-badge">Cached / demo data</span>
+  `;
+  $('#offline-updated').textContent = `Last provider update: ${provider.lastUpdatedLabel || provider.lastUpdated || '—'}`;
+  $('#sync-status').hidden = false;
+  $('#sync-label').textContent = `Journey: ${sync}`;
+}
+
+function updateSyncControls() {
+  const hasPending = state.journey
+    && (state.journey.syncStatus === 'pending' || state.journey.syncStatus === 'failed'
+      || state.actions.some((a) => a.status === 'pending'));
+  $('#btn-sync-journey').hidden = !(state.browserOnline && hasPending && !state.syncing);
+  $('#btn-retry-sync').hidden = !(state.journey?.syncStatus === 'failed');
+  const feedback = $('#feedback-panel');
+  feedback.hidden = !(state.journey && state.journey.syncStatus === 'synced' && state.browserOnline);
+  if (state.feedbackSent) {
+    $('#feedback-done').hidden = false;
+  }
+}
+
+function renderJourney() {
+  const has = Boolean(state.journey);
+  $('#journey-empty').hidden = has;
+  $('#journey-active').hidden = !has;
+  if (!has) return;
+  renderJourneyMeta();
+  $('#offline-box').hidden = state.browserOnline;
+  updateSyncControls();
+}
+
+async function saveOfflineNote() {
+  if (!state.journey) return;
+  const note = {
+    text: 'Reviewed facility requirements while offline',
+    at: new Date().toISOString(),
+  };
+
+  if (!state.browserOnline || state.journey.localOnly) {
+    const action = {
+      id: `local-action-${Date.now()}`,
+      journeyId: state.journey.id,
+      actionType: 'offline_note',
+      payload: note,
+      status: 'pending',
+      createdAt: note.at,
+    };
+    state.actions = [...state.actions, action];
+    state.journey = {
+      ...state.journey,
+      syncStatus: 'pending',
+      status: 'SYNC_PENDING',
+      updatedAt: note.at,
+    };
+    await cacheJourneyLocally();
+    showNotice('Offline note saved on this device (pending sync).');
+    renderJourney();
+    return;
+  }
+
+  try {
+    const result = await api(`/api/care/journeys/${state.journey.id}/actions`, {
+      method: 'POST',
+      body: JSON.stringify({
+        userId,
+        actionType: 'offline_note',
+        payload: note,
+      }),
+    });
+    state.journey = result.journey;
+    state.actions = [...state.actions, result.action];
+    await cacheJourneyLocally();
+    showNotice('Note saved. Sync status: pending.');
+    renderJourney();
+  } catch (error) {
+    showNotice(error.message || 'Could not save note');
+  }
+}
+
+async function syncActiveJourney() {
+  if (!state.journey || !state.browserOnline) return;
+  state.syncing = true;
+  const banner = $('#sync-banner');
+  banner.hidden = false;
+  banner.textContent = 'Connection restored. Synchronizing your journey…';
+  renderJourneyMeta();
+  updateSyncControls();
+
+  try {
+    // If journey was local-only, create it on the server first.
+    if (state.journey.localOnly) {
+      const created = await api('/api/care/journeys', {
+        method: 'POST',
+        body: JSON.stringify({
+          userId,
+          providerId: state.journey.providerId,
+          intent: state.journey.intent,
+          queryText: state.journey.queryText,
+        }),
       });
-      const remove = document.createElement('button');
-      remove.type = 'button';
-      remove.className = 'mini';
-      remove.textContent = s('delete');
-      remove.addEventListener('click', () => removeRecord(record.id));
-      actions.append(edit, remove);
+      const oldId = state.journey.id;
+      state.journey = created.journey;
+      // Replay pending local actions
+      for (const action of state.actions.filter((a) => a.status === 'pending')) {
+        await api(`/api/care/journeys/${state.journey.id}/actions`, {
+          method: 'POST',
+          body: JSON.stringify({
+            userId,
+            actionType: action.actionType,
+            payload: action.payload,
+          }),
+        });
+      }
+      void oldId;
     }
-    row.append(item, quantity, amount, date, actions);
-    body.append(row);
-  }
-}
 
-function formatAmount(amount) {
-  const rounded = Number.isInteger(Number(amount)) ? Number(amount) : Number(amount);
-  return `KSh ${rounded.toLocaleString('en-KE')}`;
-}
-
-function renderHostedModel(llm) {
-  const field = $('#hosted-model-field');
-  const select = $('#hosted-model');
-  if (!field || !select) return;
-  const show = Boolean(llm?.modelscopeConfigured);
-  field.hidden = !show;
-  if (!show) return;
-  const models = llm.models || [];
-  const current = llm.modelscopeModel || models[0] || '';
-  select.replaceChildren();
-  for (const model of models) {
-    const option = document.createElement('option');
-    option.value = model;
-    option.textContent = model.replace('Qwen-Ambassador/', '');
-    if (model === current) option.selected = true;
-    select.append(option);
-  }
-  select.title = s('hostedModelHint');
-}
-
-function renderAll(data) {
-  state.mode = data.mode;
-  state.lang = data.user.language === 'sw' ? 'sw' : state.lang;
-  if (data.user.language === 'sw' || data.user.language === 'en') {
-    state.lang = data.user.language;
-  }
-  applyChrome();
-  renderHostedModel(data.llm);
-  renderMessages(data.messages || []);
-  renderActivity(data.activity || []);
-  renderQueue(data.queue || []);
-  renderData(data.records || []);
-  if (state.ussdDisplay) $('#ussd-screen').textContent = state.ussdDisplay;
-}
-
-async function refresh() {
-  const data = await api(`/api/bootstrap?userId=${encodeURIComponent(userId)}`);
-  renderAll(data);
-  return data;
-}
-
-async function sendWeb(text) {
-  const value = text.trim();
-  if (!value) return;
-  $('#web-input').value = '';
-  await api('/api/channels/web', {
-    method: 'POST',
-    body: JSON.stringify({ userId, text: value }),
-  });
-  await refresh();
-}
-
-async function loadUssd() {
-  const result = await api('/api/channels/ussd', {
-    method: 'POST',
-    body: JSON.stringify({ userId, input: '' }),
-  });
-  state.ussdDisplay = result.display;
-  state.ussdLoaded = true;
-  $('#ussd-screen').textContent = result.display;
-}
-
-async function saveRecord(id, value) {
-  await api(`/api/records/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ userId, amountKes: Number(value) }),
-  });
-  state.editing = null;
-  await refresh();
-}
-
-async function removeRecord(id) {
-  await api(`/api/records/${id}?userId=${encodeURIComponent(userId)}`, { method: 'DELETE' });
-  await refresh();
-}
-
-document.querySelectorAll('[data-tab]').forEach((tab) => {
-  tab.addEventListener('click', () => showTab(tab.dataset.tab));
-});
-
-$('#web-form').addEventListener('submit', async (event) => {
-  event.preventDefault();
-  try {
-    await sendWeb($('#web-input').value);
-  } catch (error) {
-    showNotice(error.message);
-  }
-});
-
-$('#sms-form').addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const text = $('#sms-input').value.trim();
-  if (!text) return;
-  $('#sms-input').value = '';
-  try {
-    await api('/api/channels/sms', {
-      method: 'POST',
-      body: JSON.stringify({ userId, text }),
-    });
-    await refresh();
-  } catch (error) {
-    showNotice(error.message);
-  }
-});
-
-$('#ussd-form').addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const input = $('#ussd-input').value;
-  $('#ussd-input').value = '';
-  try {
-    const result = await api('/api/channels/ussd', {
-      method: 'POST',
-      body: JSON.stringify({ userId, input }),
-    });
-    state.ussdDisplay = result.display;
-    $('#ussd-screen').textContent = result.display;
-    await refresh();
-  } catch (error) {
-    showNotice(error.message);
-  }
-});
-
-async function setMode(mode) {
-  const data = await api('/api/connectivity', {
-    method: 'POST',
-    body: JSON.stringify({ mode }),
-  });
-  const count = data.sync?.processed?.length || 0;
-  showNotice(count ? syncNotice(count) : '');
-  await refresh();
-}
-
-$('#btn-online').addEventListener('click', () => setMode('online').catch((error) => showNotice(error.message)));
-$('#btn-offline').addEventListener('click', () => setMode('offline').catch((error) => showNotice(error.message)));
-
-$('#btn-sync').addEventListener('click', async () => {
-  try {
-    const data = await api('/api/queue/sync', { method: 'POST', body: '{}' });
-    const count = data.processed?.length || 0;
-    showNotice(data.skipped ? s('offlineBanner') : (count ? syncNotice(count) : ''));
-    await refresh();
-  } catch (error) {
-    showNotice(error.message);
-  }
-});
-
-$('#language').addEventListener('change', async (event) => {
-  try {
-    await api('/api/language', {
-      method: 'POST',
-      body: JSON.stringify({ userId, language: event.target.value }),
-    });
-    state.lang = event.target.value === 'sw' ? 'sw' : 'en';
-    await loadUssd();
-    await refresh();
-  } catch (error) {
-    showNotice(error.message);
-  }
-});
-
-$('#hosted-model')?.addEventListener('change', async (event) => {
-  try {
-    await api('/api/llm/model', {
-      method: 'POST',
-      body: JSON.stringify({ model: event.target.value }),
-    });
-    showNotice(s('hostedModelHint'));
-    await refresh();
-  } catch (error) {
-    showNotice(error.message);
-  }
-});
-
-$('#btn-clear').addEventListener('click', async () => {
-  try {
-    await api('/api/demo-data/clear', {
+    const result = await api(`/api/care/journeys/${state.journey.id}/sync`, {
       method: 'POST',
       body: JSON.stringify({ userId }),
     });
-    state.editing = null;
-    await loadUssd();
-    await refresh();
+    state.journey = result.journey;
+    state.actions = state.actions.map((a) => (
+      a.status === 'pending' ? { ...a, status: 'synced', completedAt: new Date().toISOString() } : a
+    ));
+    await cacheJourneyLocally();
+    banner.textContent = 'Synced successfully';
+    showNotice('Synced successfully. Provider information refreshed where available.');
   } catch (error) {
-    showNotice(error.message);
+    state.journey = {
+      ...state.journey,
+      syncStatus: 'failed',
+    };
+    await cacheJourneyLocally();
+    banner.textContent = 'We couldn\'t sync your update. Your journey is safely stored on this device.';
+    showNotice(error.message || 'Sync failed');
+  } finally {
+    state.syncing = false;
+    renderJourney();
   }
-});
+}
+
+async function submitFeedback(rating) {
+  if (!state.journey || state.feedbackSent) return;
+  const comment = $('#feedback-comment').value.trim();
+  try {
+    await api('/api/care/feedback', {
+      method: 'POST',
+      body: JSON.stringify({
+        userId,
+        journeyId: state.journey.localOnly ? null : state.journey.id,
+        rating,
+        comment: comment || null,
+      }),
+    });
+  } catch {
+    // Persist feedback intent locally even if API fails.
+  }
+  state.feedbackSent = true;
+  state.journey = { ...state.journey, status: 'FEEDBACK' };
+  await cacheJourneyLocally();
+  await idbSet('lastFeedback', { rating, comment, at: new Date().toISOString() });
+  $('#feedback-done').hidden = false;
+  showNotice('Feedback saved. Thank you.');
+}
+
+async function setBackendMode(mode) {
+  const result = await api('/api/connectivity', {
+    method: 'POST',
+    body: JSON.stringify({ mode }),
+  });
+  applyBackendMode(result.mode);
+  if (result.mode === 'online' && result.sync?.processed?.length) {
+    showNotice(`Synced ${result.sync.processed.length} queued channel request(s).`);
+  }
+}
+
+async function sendSms(text) {
+  const result = await api('/api/channels/sms', {
+    method: 'POST',
+    body: JSON.stringify({ userId, text }),
+  });
+  appendSms(text, 'user');
+  appendSms(result.text, 'agent');
+}
+
+function appendSms(text, who) {
+  const log = $('#sms-log');
+  const item = document.createElement('div');
+  item.className = `sms-item ${who}`;
+  item.innerHTML = `<div class="who">${who === 'user' ? 'You' : 'FikaAI'}</div><div>${escapeHtml(text)}</div>`;
+  log.append(item);
+  log.scrollTop = log.scrollHeight;
+}
+
+async function sendUssd(input) {
+  const result = await api('/api/channels/ussd', {
+    method: 'POST',
+    body: JSON.stringify({ userId, input }),
+  });
+  $('#ussd-screen').textContent = result.display || result.text || '';
+}
+
+async function bootstrap() {
+  try {
+    const data = await api(`/api/bootstrap?userId=${encodeURIComponent(userId)}`);
+    applyBackendMode(data.mode);
+    if (data.journey) {
+      state.journey = data.journey;
+      state.selectedProvider = data.journey.providerSnapshot;
+      state.intent = data.journey.intent;
+      state.queryText = data.journey.queryText || '';
+      await cacheJourneyLocally();
+    } else {
+      await restoreJourneyFromCache();
+    }
+  } catch {
+    await restoreJourneyFromCache();
+    showNotice('Backend unavailable. Showing saved journey from this device if available.');
+  }
+
+  try {
+    const ussd = await api('/api/channels/ussd', {
+      method: 'POST',
+      body: JSON.stringify({ userId, input: '' }),
+    });
+    $('#ussd-screen').textContent = ussd.display || ussd.text || '';
+  } catch {
+    $('#ussd-screen').textContent = 'USSD simulator unavailable while offline.';
+  }
+
+  setBrowserOnline(navigator.onLine);
+  renderJourney();
+}
+
+function bindEvents() {
+  document.querySelectorAll('[data-tab]').forEach((tab) => {
+    tab.addEventListener('click', () => showTab(tab.dataset.tab));
+  });
+
+  $('#care-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    findCare($('#care-input').value);
+  });
+
+  document.querySelectorAll('[data-example]').forEach((button) => {
+    button.addEventListener('click', () => {
+      $('#care-input').value = button.dataset.example;
+      findCare(button.dataset.example);
+    });
+  });
+
+  $('#btn-back-results').addEventListener('click', () => showCareView('search'));
+  $('#btn-start-journey').addEventListener('click', () => startJourney());
+  $('#btn-go-search').addEventListener('click', () => showTab('care'));
+  $('#btn-offline-action').addEventListener('click', () => saveOfflineNote());
+  $('#btn-sync-journey').addEventListener('click', () => syncActiveJourney());
+  $('#btn-retry-sync').addEventListener('click', () => syncActiveJourney());
+
+  document.querySelectorAll('[data-rating]').forEach((button) => {
+    button.addEventListener('click', () => submitFeedback(button.dataset.rating));
+  });
+
+  $('#btn-online').addEventListener('click', () => setBackendMode('online'));
+  $('#btn-offline').addEventListener('click', () => setBackendMode('offline'));
+
+  $('#sms-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    const value = $('#sms-input').value.trim();
+    if (!value) return;
+    $('#sms-input').value = '';
+    sendSms(value).catch((error) => showNotice(error.message));
+  });
+
+  $('#ussd-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    const value = $('#ussd-input').value;
+    $('#ussd-input').value = '';
+    sendUssd(value).catch((error) => showNotice(error.message));
+  });
+
+  window.addEventListener('online', async () => {
+    setBrowserOnline(true);
+    showNotice('Connection restored');
+    if (state.journey && (state.journey.syncStatus === 'pending' || state.journey.syncStatus === 'failed'
+      || state.actions.some((a) => a.status === 'pending'))) {
+      await syncActiveJourney();
+    }
+  });
+
+  window.addEventListener('offline', () => {
+    setBrowserOnline(false);
+    showNotice('You\'re offline. Your saved healthcare journey is still available.');
+  });
+}
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
 
-applyChrome();
-refresh()
-  .then(loadUssd)
-  .catch((error) => showNotice(error.message));
+bindEvents();
+bootstrap();

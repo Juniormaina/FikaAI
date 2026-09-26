@@ -11,6 +11,14 @@ import { createGateway } from '../gateway/gateway.js';
 import { createTextChannel } from '../channels/text-channel.js';
 import { createUssdChannel } from '../channels/ussd.js';
 import { syncQueue } from '../offline/sync.js';
+import {
+  createJourneyFromProvider,
+  queueJourneyAction,
+  runCareSearch,
+  seedProviders,
+  syncJourney,
+} from '../healthcare/care.js';
+import { toProviderRow } from '../healthcare/providers-data.js';
 
 function httpError(status, message) {
   const error = new Error(message);
@@ -30,6 +38,7 @@ export function createApp(options = {}) {
   const db = openDatabase(config.databasePath);
   const repo = createRepo(db);
   repo.ensureUser(config.defaultUserId, 'Local demo');
+  seedProviders(repo);
   const connectivity = createConnectivity(repo, config.connectivityMode);
   const llm = options.llm ?? createDefaultLlm(config, {
     connectivity,
@@ -140,6 +149,7 @@ export function createApp(options = {}) {
   app.get('/api/bootstrap', wrap(async (req, res) => {
     const userId = readUserId(req.query.userId);
     const user = repo.ensureUser(userId);
+    const journey = repo.latestJourney(userId);
     res.json({
       user,
       mode: await connectivity.getMode(),
@@ -147,6 +157,9 @@ export function createApp(options = {}) {
       queue: repo.listQueue(userId),
       messages: repo.listMessages(userId),
       activity: repo.listActivity(userId),
+      journey,
+      providerCount: repo.countProviders(),
+      demoNotice: 'FikaAI\'s prototype uses synthetic provider data. Do not enter sensitive medical information.',
       llm: {
         mode: config.llmProvider,
         modelscopeConfigured: Boolean(config.modelscopeApiKey),
@@ -155,6 +168,134 @@ export function createApp(options = {}) {
         ollamaModel: config.ollamaModel,
       },
     });
+  }));
+
+  app.post('/api/seed', wrap((req, res) => {
+    const force = Boolean(req.body?.force);
+    if (force) {
+      for (const row of repo.listProviders()) {
+        db.prepare('DELETE FROM providers WHERE id = ?').run(row.id);
+      }
+    }
+    const result = seedProviders(repo);
+    res.json({
+      ok: true,
+      ...result,
+      providers: repo.listProviders().map(toProviderRow),
+    });
+  }));
+
+  app.post('/api/care/search', wrap(async (req, res) => {
+    const userId = readUserId(req.body?.userId);
+    const text = readText(req.body?.text);
+    const online = await connectivity.isOnline();
+    // When demo connectivity is offline, skip hosted AI and use deterministic fallback.
+    const llmForSearch = online ? llm : null;
+    const result = await runCareSearch({ repo, llm: llmForSearch, text, userId });
+    if (!online && result.kind !== 'emergency') {
+      result.offline = true;
+      result.aiUnavailable = true;
+      if (!result.message && result.kind === 'results') {
+        result.notice = 'You\'re offline. Showing providers from the local demo directory via fallback search.';
+      }
+    } else if (result.aiUnavailable && result.kind === 'results') {
+      result.notice = 'AI assistance is temporarily unavailable. You can still search available healthcare providers.';
+    }
+    res.json(result);
+  }));
+
+  app.get('/api/care/providers', wrap((req, res) => {
+    const specialty = req.query.specialty ? String(req.query.specialty) : null;
+    const location = req.query.location ? String(req.query.location) : null;
+    const providers = repo.searchProviders({ specialty, location }).map(toProviderRow);
+    res.json({
+      providers,
+      demoNotice: 'Synthetic provider data — for demonstration only',
+    });
+  }));
+
+  app.get('/api/care/providers/:id', wrap((req, res) => {
+    const provider = repo.getProvider(req.params.id);
+    if (!provider) throw httpError(404, 'Provider not found');
+    res.json({ provider: toProviderRow(provider) });
+  }));
+
+  app.post('/api/care/journeys', wrap((req, res) => {
+    const userId = readUserId(req.body?.userId);
+    const providerId = String(req.body?.providerId || '').trim();
+    if (!providerId) throw httpError(400, 'providerId is required');
+    const journey = createJourneyFromProvider({
+      repo,
+      userId,
+      providerId,
+      intent: req.body?.intent || null,
+      queryText: req.body?.queryText ? String(req.body.queryText).slice(0, 500) : null,
+    });
+    if (!journey) throw httpError(404, 'Provider not found');
+    res.status(201).json({ journey });
+  }));
+
+  app.get('/api/care/journeys/latest', wrap((req, res) => {
+    const userId = readUserId(req.query.userId);
+    const journey = repo.latestJourney(userId);
+    const actions = journey ? repo.listJourneyActions(journey.id) : [];
+    res.json({ journey, actions });
+  }));
+
+  app.get('/api/care/journeys/:id', wrap((req, res) => {
+    const userId = readUserId(req.query.userId);
+    const journey = repo.getJourney(req.params.id, userId);
+    if (!journey) throw httpError(404, 'Journey not found');
+    res.json({
+      journey,
+      actions: repo.listJourneyActions(journey.id),
+    });
+  }));
+
+  app.post('/api/care/journeys/:id/actions', wrap((req, res) => {
+    const userId = readUserId(req.body?.userId);
+    const actionType = String(req.body?.actionType || 'note').trim().slice(0, 64);
+    const payload = req.body?.payload && typeof req.body.payload === 'object'
+      ? req.body.payload
+      : { note: String(req.body?.note || 'Offline check-in').slice(0, 200) };
+    const result = queueJourneyAction({
+      repo,
+      journeyId: req.params.id,
+      userId,
+      actionType,
+      payload,
+    });
+    if (!result) throw httpError(404, 'Journey not found');
+    res.status(201).json(result);
+  }));
+
+  app.post('/api/care/journeys/:id/sync', wrap(async (req, res) => {
+    const userId = readUserId(req.body?.userId);
+    if (!(await connectivity.isOnline())) {
+      throw httpError(409, 'Cannot sync while offline');
+    }
+    const result = syncJourney({ repo, journeyId: req.params.id, userId });
+    if (!result) throw httpError(404, 'Journey not found');
+    res.json(result);
+  }));
+
+  app.post('/api/care/feedback', wrap((req, res) => {
+    const userId = readUserId(req.body?.userId);
+    const rating = String(req.body?.rating || '').trim().toLowerCase();
+    if (!['yes', 'partly', 'no'].includes(rating)) {
+      throw httpError(400, 'rating must be yes, partly, or no');
+    }
+    const comment = req.body?.comment == null
+      ? null
+      : String(req.body.comment).trim().slice(0, 300);
+    const journeyId = req.body?.journeyId ? String(req.body.journeyId) : null;
+    if (journeyId) {
+      const journey = repo.getJourney(journeyId, userId);
+      if (!journey) throw httpError(404, 'Journey not found');
+      repo.updateJourney(journeyId, userId, { status: 'FEEDBACK' });
+    }
+    const feedback = repo.createFeedback({ userId, journeyId, rating, comment });
+    res.status(201).json({ feedback });
   }));
 
   app.get('/api/connectivity', wrap(async (req, res) => {

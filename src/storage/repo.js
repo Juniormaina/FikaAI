@@ -282,6 +282,292 @@ export function createRepo(db) {
       db.prepare('DELETE FROM offline_queue WHERE user_id = ?').run(userId);
       db.prepare('DELETE FROM messages WHERE user_id = ?').run(userId);
       db.prepare('DELETE FROM records WHERE user_id = ?').run(userId);
+      db.prepare('DELETE FROM feedback WHERE user_id = ?').run(userId);
+      db.prepare('DELETE FROM journey_actions WHERE user_id = ?').run(userId);
+      db.prepare('DELETE FROM journeys WHERE user_id = ?').run(userId);
     },
+
+    upsertProvider(provider) {
+      const specialties = Array.isArray(provider.specialties)
+        ? provider.specialties.join(',')
+        : String(provider.specialties || '');
+      db.prepare(
+        `INSERT INTO providers (
+          id, facility_name, facility_type, location, county, specialties, specialist_name,
+          availability_status, availability_note, appointment_required, referral_required,
+          contact_information, instructions, last_updated, data_source, is_demo_data
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          facility_name = excluded.facility_name,
+          facility_type = excluded.facility_type,
+          location = excluded.location,
+          county = excluded.county,
+          specialties = excluded.specialties,
+          specialist_name = excluded.specialist_name,
+          availability_status = excluded.availability_status,
+          availability_note = excluded.availability_note,
+          appointment_required = excluded.appointment_required,
+          referral_required = excluded.referral_required,
+          contact_information = excluded.contact_information,
+          instructions = excluded.instructions,
+          last_updated = excluded.last_updated,
+          data_source = excluded.data_source,
+          is_demo_data = excluded.is_demo_data`,
+      ).run(
+        provider.id,
+        provider.facility_name,
+        provider.facility_type,
+        provider.location,
+        provider.county,
+        specialties,
+        provider.specialist_name,
+        provider.availability_status,
+        provider.availability_note || null,
+        provider.appointment_required ? 1 : 0,
+        provider.referral_required ? 1 : 0,
+        provider.contact_information || null,
+        provider.instructions || null,
+        provider.last_updated,
+        provider.data_source,
+        provider.is_demo_data === false ? 0 : 1,
+      );
+      return this.getProvider(provider.id);
+    },
+
+    countProviders() {
+      const row = db.prepare('SELECT COUNT(*) AS count FROM providers').get();
+      return Number(row?.count || 0);
+    },
+
+    getProvider(id) {
+      return mapProvider(db.prepare('SELECT * FROM providers WHERE id = ?').get(id));
+    },
+
+    listProviders() {
+      return db.prepare('SELECT * FROM providers ORDER BY facility_name ASC').all().map(mapProvider);
+    },
+
+    searchProviders({ specialty = null, location = null } = {}) {
+      let sql = 'SELECT * FROM providers WHERE 1=1';
+      const params = [];
+      if (specialty) {
+        sql += ' AND lower(specialties) LIKE ?';
+        params.push(`%${String(specialty).toLowerCase()}%`);
+      }
+      if (location) {
+        sql += ' AND (lower(county) LIKE ? OR lower(location) LIKE ?)';
+        const needle = `%${String(location).toLowerCase()}%`;
+        params.push(needle, needle);
+      }
+      sql += ' ORDER BY facility_name ASC';
+      return db.prepare(sql).all(...params).map(mapProvider);
+    },
+
+    createJourney({ userId, providerId, status, syncStatus, intent, queryText, providerSnapshot }) {
+      this.ensureUser(userId);
+      const id = crypto.randomUUID();
+      const now = new Date().toISOString();
+      db.prepare(
+        `INSERT INTO journeys (
+          id, user_id, provider_id, status, sync_status, intent_json, query_text, provider_snapshot, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        id,
+        userId,
+        providerId,
+        status,
+        syncStatus,
+        intent ? JSON.stringify(intent) : null,
+        queryText || null,
+        JSON.stringify(providerSnapshot),
+        now,
+        now,
+      );
+      return this.getJourney(id, userId);
+    },
+
+    getJourney(id, userId) {
+      return mapJourney(
+        db.prepare('SELECT * FROM journeys WHERE id = ? AND user_id = ?').get(id, userId),
+      );
+    },
+
+    latestJourney(userId) {
+      return mapJourney(
+        db.prepare('SELECT * FROM journeys WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1').get(userId),
+      );
+    },
+
+    updateJourney(id, userId, patch) {
+      const sets = [];
+      const params = [];
+      if (patch.status !== undefined) {
+        sets.push('status = ?');
+        params.push(patch.status);
+      }
+      if (patch.syncStatus !== undefined) {
+        sets.push('sync_status = ?');
+        params.push(patch.syncStatus);
+      }
+      if (patch.providerSnapshot !== undefined) {
+        sets.push('provider_snapshot = ?');
+        params.push(JSON.stringify(patch.providerSnapshot));
+      }
+      if (!sets.length) return this.getJourney(id, userId);
+      sets.push('updated_at = ?');
+      params.push(new Date().toISOString(), id, userId);
+      db.prepare(`UPDATE journeys SET ${sets.join(', ')} WHERE id = ? AND user_id = ?`).run(...params);
+      return this.getJourney(id, userId);
+    },
+
+    addJourneyAction({ journeyId, userId, actionType, payload, status = 'pending' }) {
+      this.ensureUser(userId);
+      const id = crypto.randomUUID();
+      const createdAt = new Date().toISOString();
+      db.prepare(
+        `INSERT INTO journey_actions (
+          id, journey_id, user_id, action_type, payload_json, status, created_at, completed_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL)`,
+      ).run(
+        id,
+        journeyId,
+        userId,
+        actionType,
+        payload ? JSON.stringify(payload) : null,
+        status,
+        createdAt,
+      );
+      return mapJourneyAction(
+        db.prepare('SELECT * FROM journey_actions WHERE id = ?').get(id),
+      );
+    },
+
+    listJourneyActions(journeyId, status = null) {
+      if (status) {
+        return db.prepare(
+          'SELECT * FROM journey_actions WHERE journey_id = ? AND status = ? ORDER BY created_at ASC',
+        ).all(journeyId, status).map(mapJourneyAction);
+      }
+      return db.prepare(
+        'SELECT * FROM journey_actions WHERE journey_id = ? ORDER BY created_at ASC',
+      ).all(journeyId).map(mapJourneyAction);
+    },
+
+    updateJourneyAction(id, patch) {
+      const sets = [];
+      const params = [];
+      if (patch.status !== undefined) {
+        sets.push('status = ?');
+        params.push(patch.status);
+      }
+      if (patch.completedAt !== undefined) {
+        sets.push('completed_at = ?');
+        params.push(patch.completedAt);
+      }
+      if (!sets.length) return;
+      params.push(id);
+      db.prepare(`UPDATE journey_actions SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+    },
+
+    createFeedback({ userId, journeyId = null, rating, comment = null }) {
+      this.ensureUser(userId);
+      const id = crypto.randomUUID();
+      const createdAt = new Date().toISOString();
+      db.prepare(
+        `INSERT INTO feedback (id, user_id, journey_id, rating, comment, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      ).run(id, userId, journeyId, rating, comment, createdAt);
+      return {
+        id,
+        userId,
+        journeyId,
+        rating,
+        comment,
+        createdAt,
+      };
+    },
+
+    listFeedback(userId) {
+      return db.prepare(
+        'SELECT * FROM feedback WHERE user_id = ? ORDER BY created_at DESC',
+      ).all(userId).map((row) => ({
+        id: row.id,
+        userId: row.user_id,
+        journeyId: row.journey_id,
+        rating: row.rating,
+        comment: row.comment,
+        createdAt: row.created_at,
+      }));
+    },
+  };
+}
+
+function mapProvider(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    facility_name: row.facility_name,
+    facility_type: row.facility_type,
+    location: row.location,
+    county: row.county,
+    specialties: String(row.specialties || '').split(',').map((s) => s.trim()).filter(Boolean),
+    specialist_name: row.specialist_name,
+    availability_status: row.availability_status,
+    availability_note: row.availability_note,
+    appointment_required: Boolean(row.appointment_required),
+    referral_required: Boolean(row.referral_required),
+    contact_information: row.contact_information,
+    instructions: row.instructions,
+    last_updated: row.last_updated,
+    data_source: row.data_source,
+    is_demo_data: Boolean(row.is_demo_data),
+  };
+}
+
+function mapJourney(row) {
+  if (!row) return null;
+  let intent = null;
+  let providerSnapshot = null;
+  try {
+    intent = row.intent_json ? JSON.parse(row.intent_json) : null;
+  } catch {
+    intent = null;
+  }
+  try {
+    providerSnapshot = row.provider_snapshot ? JSON.parse(row.provider_snapshot) : null;
+  } catch {
+    providerSnapshot = null;
+  }
+  return {
+    id: row.id,
+    userId: row.user_id,
+    providerId: row.provider_id,
+    status: row.status,
+    syncStatus: row.sync_status,
+    intent,
+    queryText: row.query_text,
+    providerSnapshot,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapJourneyAction(row) {
+  if (!row) return null;
+  let payload = null;
+  try {
+    payload = row.payload_json ? JSON.parse(row.payload_json) : null;
+  } catch {
+    payload = null;
+  }
+  return {
+    id: row.id,
+    journeyId: row.journey_id,
+    userId: row.user_id,
+    actionType: row.action_type,
+    payload,
+    status: row.status,
+    createdAt: row.created_at,
+    completedAt: row.completed_at,
   };
 }

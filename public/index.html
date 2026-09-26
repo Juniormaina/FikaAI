@@ -3,128 +3,167 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#1d6b45" />
-    <meta name="description" content="FikaAI local demo for web, SMS, and USSD." />
+    <meta name="theme-color" content="#0b5f5c" />
+    <meta name="description" content="FikaAI — Healthcare access that works when connectivity doesn't." />
     <title>FikaAI</title>
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
-  <body data-mode="online">
+  <body data-mode="online" data-browser="online">
+    <div class="atmosphere" aria-hidden="true"></div>
+
     <header class="top">
       <div class="brand">
-        <p class="eyebrow">Offline-first agent</p>
+        <p class="eyebrow">Demo · Synthetic provider data</p>
         <h1>FikaAI</h1>
-        <p class="sub" data-i18n="tagline">One agent for web, SMS, and USSD. Local SQLite. No paid APIs.</p>
+        <p class="tagline">Healthcare access that works when connectivity doesn't.</p>
       </div>
-      <div class="controls">
-        <label class="field">
-          <span data-i18n="language">Language</span>
-          <select id="language">
-            <option value="en">English</option>
-            <option value="sw">Kiswahili</option>
-          </select>
-        </label>
-        <div class="field" id="hosted-model-field" hidden>
-          <span data-i18n="hostedModel">Hosted model</span>
-          <select id="hosted-model" aria-label="Hosted ModelScope model"></select>
+      <div class="status-cluster">
+        <div class="status-pill" id="browser-status" title="Browser network status">
+          <span class="dot" id="browser-dot"></span>
+          <span id="browser-label">Online</span>
         </div>
-        <div class="field">
-          <span data-i18n="connectivity">Connectivity</span>
-          <div class="switch" role="group" aria-label="Connectivity">
-            <button type="button" id="btn-online" aria-pressed="true" data-i18n="online">Online</button>
-            <button type="button" id="btn-offline" aria-pressed="false" data-i18n="offline">Offline</button>
+        <div class="status-pill muted" id="sync-status" hidden>
+          <span id="sync-label">Synced</span>
+        </div>
+        <div class="field compact">
+          <span>Demo backend</span>
+          <div class="switch" role="group" aria-label="Demo backend connectivity">
+            <button type="button" id="btn-online" aria-pressed="true">Online</button>
+            <button type="button" id="btn-offline" aria-pressed="false">Offline</button>
           </div>
         </div>
       </div>
     </header>
 
-    <p id="offline-banner" class="banner" hidden data-i18n="offlineBanner"></p>
+    <p id="privacy-banner" class="banner privacy">
+      FikaAI's prototype uses synthetic provider data. Do not enter sensitive medical information.
+    </p>
+    <p id="offline-banner" class="banner" hidden>
+      You're offline. Your saved healthcare journey is still available.
+    </p>
     <p id="notice" class="notice" hidden></p>
 
     <nav class="tabs" role="tablist">
-      <button type="button" data-tab="web" role="tab" aria-selected="true" data-i18n="chat">Web</button>
-      <button type="button" data-tab="sms" role="tab" aria-selected="false" data-i18n="sms">SMS</button>
-      <button type="button" data-tab="ussd" role="tab" aria-selected="false" data-i18n="ussd">USSD</button>
-      <button type="button" data-tab="activity" role="tab" aria-selected="false" data-i18n="activity">Activity</button>
-      <button type="button" data-tab="queue" role="tab" aria-selected="false" data-i18n="queue">Queue</button>
-      <button type="button" data-tab="data" role="tab" aria-selected="false" data-i18n="data">Data</button>
+      <button type="button" data-tab="care" role="tab" aria-selected="true">Find care</button>
+      <button type="button" data-tab="journey" role="tab" aria-selected="false">Journey</button>
+      <button type="button" data-tab="channels" role="tab" aria-selected="false">SMS / USSD</button>
     </nav>
 
     <main>
-      <section id="panel-web" data-panel="web">
-        <p class="intro" data-i18n="webIntro"></p>
-        <div id="examples" class="examples"></div>
-        <div id="web-log" class="log" aria-live="polite"></div>
-        <form id="web-form" class="composer">
-          <label class="sr-only" for="web-input" data-i18n="placeholder">Ask FikaAI</label>
-          <input id="web-input" name="text" maxlength="1000" autocomplete="off" data-i18n-placeholder="placeholder" />
-          <button type="submit" data-i18n="send">Send</button>
-        </form>
-      </section>
-
-      <section id="panel-sms" data-panel="sms" hidden>
-        <p class="intro" data-i18n="smsIntro"></p>
-        <div class="phone">
-          <div class="phone-bar" data-i18n="smsTitle">FikaAI SMS Simulator</div>
-          <div id="sms-log" class="sms-log" aria-live="polite"></div>
-          <form id="sms-form" class="composer">
-            <label class="sr-only" for="sms-input">SMS</label>
-            <input id="sms-input" name="text" maxlength="1000" autocomplete="off" data-i18n-placeholder="smsPlaceholder" />
-            <button type="submit" data-i18n="send">Send</button>
+      <!-- SEARCH -->
+      <section id="panel-care" data-panel="care">
+        <div id="view-search" class="view">
+          <label class="search-label" for="care-input">What healthcare do you need?</label>
+          <form id="care-form" class="care-composer">
+            <textarea
+              id="care-input"
+              name="text"
+              rows="3"
+              maxlength="500"
+              placeholder="I need a cardiologist in Nairobi."
+              autocomplete="off"
+            ></textarea>
+            <button type="submit" class="primary" id="btn-find">Find care</button>
           </form>
+          <div class="examples" id="care-examples">
+            <button type="button" data-example="I need a cardiologist in Nairobi.">Cardiologist · Nairobi</button>
+            <button type="button" data-example="Looking for pediatrics care in Nairobi">Pediatrics · Nairobi</button>
+            <button type="button" data-example="I need maternal health care in Nairobi">Maternal health</button>
+          </div>
+          <div id="intent-panel" class="intent-panel" hidden></div>
+          <div id="emergency-panel" class="emergency" hidden></div>
+          <div id="results" class="results"></div>
+        </div>
+
+        <div id="view-facility" class="view" hidden>
+          <button type="button" class="linkish" id="btn-back-results">← Back to results</button>
+          <article id="facility-detail" class="facility-detail"></article>
+          <button type="button" class="primary wide" id="btn-start-journey">Start healthcare journey</button>
         </div>
       </section>
 
-      <section id="panel-ussd" data-panel="ussd" hidden>
-        <p class="intro" data-i18n="ussdIntro"></p>
-        <div class="phone ussd-phone">
-          <div class="phone-bar" data-i18n="ussdTitle">FikaAI USSD Simulator</div>
-          <pre id="ussd-screen" class="ussd-screen" aria-live="polite"></pre>
-          <form id="ussd-form" class="composer">
-            <label class="sr-only" for="ussd-input">USSD</label>
-            <input id="ussd-input" name="input" maxlength="1000" autocomplete="off" data-i18n-placeholder="ussdPlaceholder" />
-            <button type="submit" data-i18n="select">Select</button>
-          </form>
+      <!-- JOURNEY -->
+      <section id="panel-journey" data-panel="journey" hidden>
+        <div id="journey-empty" class="empty-state">
+          <h2>No journey yet</h2>
+          <p>Search for care and select a facility to start your healthcare journey.</p>
+          <button type="button" class="primary" id="btn-go-search">Find care</button>
+        </div>
+        <div id="journey-active" hidden>
+          <h2>Your Healthcare Journey</h2>
+          <ul class="checklist" id="journey-checklist">
+            <li class="done">Healthcare need identified</li>
+            <li class="done">Facility selected</li>
+            <li class="done">Provider information saved</li>
+            <li class="next">Next step: Contact/visit facility according to the displayed requirements.</li>
+          </ul>
+
+          <div class="journey-meta" id="journey-meta"></div>
+
+          <div class="offline-box" id="offline-box" hidden>
+            <h3>Offline mode</h3>
+            <p>Your saved journey is available.</p>
+            <p class="meta" id="offline-updated"></p>
+            <p class="meta">Some information may be out of date.</p>
+          </div>
+
+          <div class="actions-row">
+            <button type="button" id="btn-offline-action">Save offline note</button>
+            <button type="button" id="btn-sync-journey" class="primary" hidden>Sync now</button>
+            <button type="button" id="btn-retry-sync" hidden>Retry</button>
+          </div>
+
+          <div id="sync-banner" class="notice" hidden></div>
+
+          <section id="feedback-panel" class="feedback" hidden>
+            <h3>Did FikaAI help you understand where to seek care?</h3>
+            <div class="feedback-options">
+              <button type="button" data-rating="yes">Yes</button>
+              <button type="button" data-rating="partly">Partly</button>
+              <button type="button" data-rating="no">No</button>
+            </div>
+            <label class="sr-only" for="feedback-comment">Optional comment</label>
+            <input id="feedback-comment" maxlength="300" placeholder="Optional short comment (no medical details)" />
+            <p id="feedback-done" class="meta" hidden>Thank you — feedback saved locally.</p>
+          </section>
         </div>
       </section>
 
-      <section id="panel-activity" data-panel="activity" hidden>
-        <p class="intro" data-i18n="activityIntro"></p>
-        <ol id="activity-list" class="timeline"></ol>
-      </section>
-
-      <section id="panel-queue" data-panel="queue" hidden>
-        <p class="intro" data-i18n="queueIntro"></p>
-        <div class="row-actions">
-          <button type="button" id="btn-sync" data-i18n="sync">Sync now</button>
-        </div>
-        <div id="queue-list" class="stack"></div>
-      </section>
-
-      <section id="panel-data" data-panel="data" hidden>
-        <p class="intro" data-i18n="dataIntro"></p>
-        <div class="row-actions">
-          <button type="button" id="btn-clear" data-i18n="clear">Clear demo data</button>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th data-i18n="item">Item</th>
-                <th data-i18n="quantity">Quantity</th>
-                <th data-i18n="amount">Amount</th>
-                <th data-i18n="date">Date</th>
-                <th data-i18n="actions">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="data-body"></tbody>
-          </table>
+      <!-- SECONDARY CHANNELS -->
+      <section id="panel-channels" data-panel="channels" hidden>
+        <p class="intro">
+          SMS and USSD simulators remain available as secondary demo channels.
+          The primary demo is the Find care → Journey flow.
+        </p>
+        <div class="channel-grid">
+          <article class="channel-card">
+            <h3>SMS simulator</h3>
+            <div id="sms-log" class="sms-log" aria-live="polite"></div>
+            <form id="sms-form" class="composer">
+              <input id="sms-input" maxlength="1000" placeholder="Text FikaAI…" autocomplete="off" />
+              <button type="submit">Send</button>
+            </form>
+          </article>
+          <article class="channel-card">
+            <h3>USSD simulator</h3>
+            <pre id="ussd-screen" class="ussd-screen" aria-live="polite"></pre>
+            <form id="ussd-form" class="composer">
+              <input id="ussd-input" maxlength="1000" placeholder="Enter choice…" autocomplete="off" />
+              <button type="submit">Select</button>
+            </form>
+          </article>
         </div>
       </section>
     </main>
 
-    <footer class="foot" data-i18n="footer"></footer>
+    <footer class="foot">
+      FikaAI · Care navigation prototype · Not a diagnosis system · Not live hospital availability
+    </footer>
     <script type="module" src="/app.js"></script>
   </body>
 </html>

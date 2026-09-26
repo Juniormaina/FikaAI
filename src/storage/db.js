@@ -72,6 +72,58 @@ CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS providers (
+  id TEXT PRIMARY KEY,
+  facility_name TEXT NOT NULL,
+  facility_type TEXT NOT NULL,
+  location TEXT NOT NULL,
+  county TEXT NOT NULL,
+  specialties TEXT NOT NULL,
+  specialist_name TEXT NOT NULL,
+  availability_status TEXT NOT NULL,
+  availability_note TEXT,
+  appointment_required INTEGER NOT NULL DEFAULT 1,
+  referral_required INTEGER NOT NULL DEFAULT 0,
+  contact_information TEXT,
+  instructions TEXT,
+  last_updated TEXT NOT NULL,
+  data_source TEXT NOT NULL,
+  is_demo_data INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS journeys (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  provider_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  sync_status TEXT NOT NULL,
+  intent_json TEXT,
+  query_text TEXT,
+  provider_snapshot TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS journey_actions (
+  id TEXT PRIMARY KEY,
+  journey_id TEXT NOT NULL REFERENCES journeys(id),
+  user_id TEXT NOT NULL REFERENCES users(id),
+  action_type TEXT NOT NULL,
+  payload_json TEXT,
+  status TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  completed_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS feedback (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  journey_id TEXT,
+  rating TEXT NOT NULL,
+  comment TEXT,
+  created_at TEXT NOT NULL
+);
 `;
 
 export function openDatabase(filename) {

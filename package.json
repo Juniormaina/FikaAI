@@ -2,7 +2,7 @@
   "name": "fikaai",
   "version": "0.1.0",
   "private": true,
-  "description": "Offline-first local AI agent for web, SMS, and USSD.",
+  "description": "Healthcare access that works when connectivity doesn't.",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -10,7 +10,8 @@
   "scripts": {
     "dev": "node --watch src/server/index.js",
     "start": "node src/server/index.js",
-    "test": "vitest run",
+    "seed": "node scripts/seed.js",
+    "test": "vitest run --pool=threads --maxWorkers=1",
     "smoke:modelscope": "node scripts/smoke-modelscope.js",
     "eval:qwen": "node scripts/eval-qwen.js"
   },

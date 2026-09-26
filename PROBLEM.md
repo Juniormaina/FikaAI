@@ -1,58 +1,52 @@
 # The Problem
 
-AI systems are increasingly capable, but many of their interfaces still assume that a user has a smartphone, continuous Internet, affordable data, and a modern application.
+People who need healthcare often face unreliable connectivity. A patient may travel across a city for specialist care only to discover that an appointment or referral is required — or that the provider cannot see them that day.
 
-Those assumptions create an access and interface gap. People who rely on simpler devices, intermittent connectivity, or limited digital literacy are often asked to change how they communicate before they can benefit from AI tools.
-
-The problem is not only device ownership. It is the mismatch between AI delivery models and the communication channels people already use day to day — including SMS and USSD-style interaction in many low-resource settings.
+The access problem is not only “finding a hospital name.” It is navigating care requirements with incomplete information, then losing that context when the network drops.
 
 ## Who Experiences It?
 
-People in low-connectivity and low-resource environments, including:
+People in intermittent-connectivity settings who need to:
 
-* users of feature phones rather than smartphones
-* users with intermittent or expensive Internet access
-* users who prefer SMS or short menu-driven flows over installing another app
-* communities where digital literacy and device storage/compute are constrained
+* discover an appropriate facility or specialty
+* understand appointment and referral requirements before travelling
+* keep a care plan available when Wi‑Fi or mobile data disappears
+* resume and sync when connectivity returns
 
-This MVP does not invent population statistics. It treats those conditions as a design constraint for the prototype.
+This prototype treats those conditions as a design constraint. It does not invent population statistics.
 
 ## Why Does It Matter Now?
 
-Agentic AI is becoming more useful for everyday tasks at the same time that interface assumptions can still exclude people who do not match a high-connectivity, app-first profile.
+Mobile AI assistants are becoming more capable, but many healthcare-adjacent tools still assume continuous connectivity and rich apps. When the network fails, the user’s progress disappears with it.
 
-The opportunity is to explore whether AI can be delivered through existing infrastructure and communication habits, instead of requiring users to upgrade devices, data plans, and applications first.
+FikaAI explores whether care navigation can remain useful offline — without pretending to diagnose patients or to provide live verified hospital availability.
 
 ## What Are We Trying to Change?
 
-> **Move the technology toward the user, rather than forcing the user to move toward the technology.**
+> **Healthcare access that works when connectivity doesn't.**
 
-FikaAI explores whether an agent can:
+FikaAI’s MVP demonstrates:
 
-* speak through more than one channel from a shared intelligence layer
-* keep working for local tasks when connectivity is limited
-* queue work that needs external information
-* synchronize when connectivity returns
+* natural-language intent extraction for care discovery
+* deterministic provider search over synthetic demo data
+* a lightweight patient journey
+* offline persistence and reconnection sync
+* responsible limits (no diagnosis, no invented facilities, emergency-language redirect)
 
 ## MVP Scope
 
-This repository’s current MVP includes:
+* Care-first PWA
+* AI intent extraction with ModelScope / Ollama / deterministic fallback
+* Synthetic Nairobi-focused provider directory in SQLite
+* Journey + IndexedDB offline continuity
+* Sync state machine (`pending` → `syncing` → `synced` / `failed`)
+* Feedback
+* SMS / USSD simulators retained as secondary channels
 
-* Web/PWA interface
-* SMS simulator
-* USSD simulator
-* local SQLite storage
-* offline connectivity simulation
-* offline request queue and synchronization
-* local Ollama/Qwen2.5:3b integration
-* optional ModelScope hosted Qwen 3.x via a single provider abstraction (`LLM_PROVIDER=auto|ollama|modelscope|mock`)
-* English and Kiswahili foundations
+## What This Is Not
 
-## What Is Not Yet Implemented
-
-* real telecom SMS delivery
-* real telecom USSD connectivity
-* voice/IVR
-* production deployment
-* large-scale multilingual support beyond English and Kiswahili foundations
-* treating FikaAI as a multi-model marketplace (models remain interchangeable provider backends)
+* a medical diagnosis system
+* a replacement for clinicians
+* a live national provider network
+* verified real-time hospital availability
+* a clinical decision-support system
