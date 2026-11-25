@@ -49,6 +49,7 @@ const QUICKDIAL = [
   { menu: 2, title: 'Record a sale', desc: 'Save a sale such as MAIZE 4500 on the device.', code: '*384*40*2#' },
   { menu: 3, title: 'View sales', desc: 'Read back what you recorded today.', code: '*384*40*3#' },
   { menu: 4, title: 'Help', desc: 'See what to type and which languages work.', code: '*384*40*4#' },
+  { menu: 5, title: 'Poultry guide', desc: 'Pick a stage, then feeding, care, vaccines, housing or hygiene.', code: '*384*40*5#' },
 ];
 
 /* ---------- IndexedDB ---------- */
