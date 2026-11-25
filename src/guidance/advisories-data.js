@@ -282,6 +282,115 @@ export const SYNTHETIC_ADVISORIES = [
     sms_en: 'Dry spell feed plan: count days of silage, hay or napier on hand, keep water clean and available, introduce new feed gradually. Ask your livestock officer about supplements.',
     sms_sw: 'Mpango wa chakula wakati wa kiangazi: hesabu siku za silage, nyasi kavu au napier ulizonazo, weka maji safi, anzisha chakula kipya polepole. Muulize afisa wa mifugo kuhusu virutubisho.',
   },
+  {
+    id: 'adv-poultry-brooding',
+    title: 'Brooding chicks — huddling, panting or uneven spread',
+    category: 'livestock',
+    crops: ['poultry'],
+    regions: ['Kiambu', 'Nakuru', 'Nyandarua', 'Machakos'],
+    urgency: 'urgent',
+    summary:
+      'Chicks that huddle under the heat and cheep loudly are too cold. Chicks that spread to the edges and pant are too hot. Fixing the brooder temperature in the first weeks protects the whole flock.',
+    symptoms: ['chicks', 'chick', 'brooder', 'brooding', 'huddle', 'huddling', 'lamp', 'cold', 'panting', 'hot', 'cheeping', 'kuku', 'day-old', 'hatchlings'],
+    field_checks: [
+      {
+        title: 'Watch how the chicks are spread',
+        detail: 'Huddled tightly under the heat means too cold. Crowded at the edges and panting means too hot. Evenly spread and quiet means comfortable.',
+      },
+      {
+        title: 'Check temperature at chick height',
+        detail: 'About 32–35 °C in week 1, then about 2–3 °C lower each week. Check feed, water and draughts at the same time.',
+      },
+    ],
+    remediation:
+      'Raise or lower the heat source, or adjust the guard ring, until chicks spread evenly. Keep litter dry and the house draught-free with fresh air above. Check the flock at least three times a day, including at night.',
+    caution: 'A charcoal stove in a closed room can release carbon monoxide. Use a chimney and ventilation.',
+    protocol_ref: 'POULTRY-BROOD-01',
+    sms_en: 'Chicks huddled under the heat = too cold; spread out and panting = too hot. Aim for 32-35C in week 1, then lower 2-3C weekly. Keep litter dry. Ventilate any charcoal stove.',
+    sms_sw: 'Vifaranga vilivyokusanyika chini ya joto = baridi; vilivyotawanyika na kuhema = joto sana. Lenga 32-35C wiki ya 1, kisha punguza 2-3C kila wiki. Weka matandiko makavu. Weka hewa kwenye jiko la mkaa.',
+  },
+  {
+    id: 'adv-poultry-coccidiosis',
+    title: 'Bloody droppings and wet litter in chicks or growers',
+    category: 'disease',
+    crops: ['poultry'],
+    regions: ['Kiambu', 'Nakuru', 'Nyandarua', 'Machakos'],
+    urgency: 'urgent',
+    summary:
+      'Bloody or very watery droppings, ruffled feathers and birds sitting hunched are common signs of coccidiosis. It spreads fastest on wet litter and dirty drinkers.',
+    symptoms: ['bloody', 'blood', 'droppings', 'diarrhoea', 'diarrhea', 'wet litter', 'hunched', 'ruffled', 'chicks', 'chickens', 'coccidiosis', 'kuku', 'kuhara', 'damu'],
+    field_checks: [
+      {
+        title: 'Look at the droppings and litter',
+        detail: 'Check for blood or watery droppings and for wet, caked litter around drinkers.',
+      },
+      {
+        title: 'Count affected birds and deaths',
+        detail: 'Note how many birds look hunched or ruffled and how many died in the last day. Share the count with your vet.',
+      },
+    ],
+    remediation:
+      'Keep affected birds apart if you can, dry out wet litter, clean drinkers and keep fresh water available. Call your vet or animal health provider for the right treatment and follow the label, including any withdrawal period.',
+    caution: 'Do not give leftover medicines. Treated birds and their eggs may not be sold or eaten until the withdrawal period ends.',
+    protocol_ref: 'POULTRY-COCCI-01',
+    sms_en: 'Bloody or watery droppings and hunched birds may be coccidiosis. Dry the litter, clean drinkers, separate sick birds and call your vet for treatment. Follow withdrawal periods.',
+    sms_sw: 'Kinyesi chenye damu au maji na kuku waliojikunja huenda ni ugonjwa wa kuhara damu (coccidiosis). Kausha matandiko, safisha vinywesha, watenge wagonjwa na umpigie daktari wa mifugo.',
+  },
+  {
+    id: 'adv-poultry-vaccination',
+    title: 'Poultry vaccination check — Newcastle, Gumboro and fowl pox',
+    category: 'disease',
+    crops: ['poultry'],
+    regions: ['Kiambu', 'Nakuru', 'Nyandarua', 'Machakos'],
+    urgency: 'advisory',
+    summary:
+      'Newcastle disease, Gumboro and fowl pox are the usual vaccination concerns. Timing starts in the first days of life and continues through growing and laying. Cold storage and correct use matter as much as the date.',
+    symptoms: ['vaccine', 'vaccination', 'vaccinate', 'newcastle', 'gumboro', 'fowl pox', 'marek', 'schedule', 'booster', 'chicks', 'chickens', 'kuku', 'chanjo'],
+    field_checks: [
+      {
+        title: 'Check what the chicks already had',
+        detail: 'Ask the hatchery for the day-1 vaccine record (usually Marek’s) and write down the date you got the chicks.',
+      },
+      {
+        title: 'Write the schedule from day 1',
+        detail: 'Typical programme: Newcastle at day 7–10, Gumboro at day 14 and 21, Newcastle booster at day 21–28, fowl pox at week 6–8. Confirm with your vet.',
+      },
+    ],
+    remediation:
+      'Keep vaccines cold, use them before expiry and vaccinate only healthy birds, in the cool hours. For drinking-water vaccines, use chlorine-free water and use the mixed vaccine within about one to two hours. Ask your vet to confirm the schedule for your area.',
+    caution: 'Never use warm or expired vaccine. Dispose of leftover vaccine and empty vials safely.',
+    protocol_ref: 'POULTRY-VACC-01',
+    sms_en: 'Typical chick vaccines: Newcastle day 7-10, Gumboro day 14 and 21, Newcastle booster day 21-28, fowl pox week 6-8. Keep vaccine cold, vaccinate healthy birds only. Confirm with your vet.',
+    sms_sw: 'Chanjo za kawaida za vifaranga: Newcastle siku 7-10, Gumboro siku 14 na 21, nyongeza ya Newcastle siku 21-28, ndui ya kuku wiki 6-8. Hifadhi chanjo kwenye baridi. Thibitisha na daktari wa mifugo.',
+  },
+  {
+    id: 'adv-poultry-layer-feeding',
+    title: 'Laying hens — drop in eggs, thin shells or poor feed intake',
+    category: 'livestock',
+    crops: ['poultry'],
+    regions: ['Kiambu', 'Nakuru', 'Nyandarua', 'Machakos'],
+    urgency: 'routine',
+    summary:
+      'Egg production can fall when water runs short, the feed changes, calcium is too low, days get shorter or the hens are stressed. Rule these out before suspecting disease.',
+    symptoms: ['eggs', 'egg', 'laying', 'layers', 'layer', 'hens', 'thin shells', 'soft shells', 'egg drop', 'production', 'mayai', 'kuku', 'water'],
+    field_checks: [
+      {
+        title: 'Check water first',
+        detail: 'Make sure drinkers are clean, full and enough for the flock. Hens drink about twice as much as they eat.',
+      },
+      {
+        title: 'Check feed, calcium and light',
+        detail: 'Confirm hens are on layer mash with calcium, that oyster shell or limestone is offered, and that they get 14–16 hours of light a day.',
+      },
+    ],
+    remediation:
+      'Fix water, feed and light first and avoid sudden feed changes. In hot weather add shade and cool water. If production keeps falling, or birds look sick, call your vet.',
+    caution: 'Treated hens’ eggs must not be sold or eaten until the withdrawal period on the label ends.',
+    protocol_ref: 'POULTRY-LAYER-01',
+    sms_en: 'Egg drop? Check water first, then layer mash with calcium, oyster shell, and 14-16 hours of light. Add shade in heat. If it continues or birds look sick, call your vet.',
+    sms_sw: 'Mayai yamepungua? Angalia maji kwanza, kisha chakula cha kuku wa mayai chenye kalsiamu, chokaa cha ganda, na mwanga masaa 14-16. Weka kivuli kwenye joto. Ikiendelea, mpigie daktari wa mifugo.',
+  },
+
 ];
 
 export function toAdvisoryRow(record) {

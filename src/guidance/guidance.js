@@ -11,9 +11,7 @@ export const MAX_RESULTS = 4;
 
 export function seedAdvisories(repo) {
   const existing = repo.countAdvisories();
-  if (existing > 0) {
-    return { seeded: false, count: existing };
-  }
+  // Always upsert so new or revised advisories reach databases that were seeded earlier.
   for (const advisory of SYNTHETIC_ADVISORIES) {
     repo.upsertAdvisory({
       ...advisory,
@@ -22,7 +20,7 @@ export function seedAdvisories(repo) {
       is_demo_data: true,
     });
   }
-  return { seeded: true, count: SYNTHETIC_ADVISORIES.length };
+  return { seeded: existing === 0, count: SYNTHETIC_ADVISORIES.length };
 }
 
 function symptomHits(advisory, text) {

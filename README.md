@@ -27,15 +27,16 @@ FikaAI helps a user:
 Features implemented in this repository:
 
 * Natural-language guidance search with structured intent extraction (crop, region, symptom, category)
-* Deterministic ranking over a synthetic advisory library (10 demo advisories: nutrient, pest, disease, water, planting, livestock)
+* Deterministic ranking over a synthetic advisory library (14 demo advisories: nutrient, pest, disease, water, planting, livestock, including 4 poultry)
 * Advisory detail with field checks, remediation, caution, demo-data badge and last-updated label
 * Farm plan creation and persistence, with step progress and field observations
 * Offline continuity via service worker shell cache and IndexedDB plan cache
 * Browser online/offline detection and reconnect sync (`pending` → `syncing` → `synced` / `failed`)
 * Simple feedback capture
-* Hazard safety layer for pesticide poisoning and sudden animal death (redirects to medical, veterinary or extension help; no diagnosis)
+* Hazard safety layer for pesticide poisoning and sudden animal or flock deaths (redirects to medical, veterinary or extension help; no diagnosis)
 * AI failure fallback via deterministic keyword intent mapping
 * SMS and USSD simulators (`*384*40#`, demo codes) in English and Kiswahili, including sale recording
+* Poultry life-stage guide (hatching, brooding, growers, adult layers) covering feeding, care, vaccination, accommodation and hygiene, with a vaccination schedule table and vet red flags; cached on the device for offline use
 * Printable bilingual dial sheet at `/cheatsheet.html`
 
 ### Design
@@ -190,7 +191,7 @@ See `.env.example`. Never commit real secrets.
 npm test
 ```
 
-54 tests across agent, channels, offline queue, data, LLM provider, e2e and guidance suites.
+60 tests across agent, channels, offline queue, data, LLM provider, e2e and guidance suites.
 
 Guidance coverage includes intent fallback, malformed AI rejection, hazard safety, advisory ranking, plan create, pending action, sync, feedback and offline-backend search fallback.
 
@@ -212,7 +213,7 @@ Recommended sequence:
 ### Layout
 
 ```text
-src/guidance       Intent, hazard safety, synthetic advisories, guidance flow
+src/guidance       Intent, hazard safety, synthetic advisories, poultry guide, guidance flow
 src/server         HTTP API + static PWA
 src/llm            ModelScope / Ollama / mock router
 src/storage        SQLite schema + repository

@@ -1,0 +1,234 @@
+/**
+ * Poultry life-stage guide: hatching → brooding → growers → adult layers.
+ *
+ * General good-practice guidance for small and medium flocks in East Africa.
+ * It is NOT a veterinary prescription. Vaccine choice, schedule and any
+ * treatment depend on local disease pressure and the product in use, so every
+ * stage points the farmer back to a vet or animal health provider.
+ */
+
+export const POULTRY_GUIDE_UPDATED = '2026-11-25T06:00:00.000Z';
+
+export const POULTRY_DISCLAIMER =
+  'General poultry guidance. Vaccine schedules, products and treatments vary by area and flock — confirm with your county veterinary officer or animal health provider. Follow product labels and withdrawal periods.';
+
+export const POULTRY_STAGES = [
+  {
+    id: 'hatching',
+    name: 'Hatching & day-old chicks',
+    age: 'Egg set → day 3',
+    summary:
+      'Chickens hatch about 21 days after the eggs are set. The first 72 hours decide how strong the flock will be, so the work is warmth, a clean start and quick access to water and feed.',
+    sections: {
+      feeding: [
+        'A day-old chick lives off its yolk for about 48–72 hours, but offer water and chick starter as soon as it is in the brooder, within the first 24 hours.',
+        'Give clean, room-temperature water first. Dip the beaks of a few chicks to show the rest where to drink.',
+        'Scatter fine chick starter on a clean tray or egg-box lid so every chick can find it. Add glucose or electrolytes to the water only as the product label directs.',
+        'With a broody hen, keep feed and clean water within her reach and avoid disturbing her.',
+      ],
+      care: [
+        'Choose clean, medium-sized eggs from healthy hens and store them cool for no more than a week before setting.',
+        'Incubator (forced air): about 37.5 °C, humidity about 50–55%. Raise humidity to about 65–70% for the last 3 days. Turn eggs at least 3 times a day until day 18, then stop turning.',
+        'Do not open the incubator during the hatch. Let chicks dry and fluff up before moving them to the brooder.',
+        'A good chick is dry, bright-eyed and active, with a healed navel. Cull obviously weak or deformed chicks early.',
+        'Do not pull chicks out of the shell.',
+      ],
+      vaccination: [
+        'Marek’s disease vaccine is normally given at the hatchery on day 1. Buy from a supplier who vaccinates and gives you a written record.',
+        'Do not vaccinate chicks that are chilled, sick or very weak.',
+      ],
+      accommodation: [
+        'Have the brooder ready and warm at least 24 hours before the chicks arrive: about 32–35 °C at chick height, under the heat source.',
+        'Use 5–7 cm of clean, dry litter such as wood shavings or rice husks. Cover it with non-slip paper for the first days so feet do not splay.',
+        'Keep chicks warm and out of draughts on the way home. Move them in the cool part of the day.',
+      ],
+      hygiene: [
+        'Wash your hands before and after handling eggs or chicks.',
+        'Clean and disinfect the incubator, egg trays and brooder between hatches. Never mix chicks from different hatches or sources.',
+        'Keep shells and dead-in-shell eggs away from chicks and dispose of them safely.',
+        'Use clean drinkers and feeders that are washed daily.',
+      ],
+    },
+    watch_for: [
+      'Chicks with a wet or unhealed navel, or a bad smell in the hatching tray',
+      'Chicks that sit apart, are cold to touch or do not drink within the first day',
+    ],
+  },
+  {
+    id: 'brooding',
+    name: 'Brooding chicks',
+    age: 'Day 1 → week 4–6',
+    summary:
+      'Chicks cannot keep themselves warm yet. Steady heat, easy access to feed and water, dry litter and fresh air are what the next four to six weeks are about. Broilers usually go to market at about 5–6 weeks.',
+    sections: {
+      feeding: [
+        'Feed chick starter or chick mash from day 1, with feed always available. Broiler starter is richer in protein (about 22–23%) than layer or kienyeji chick mash (about 18–20%).',
+        'Provide plenty of small feeders and drinkers, roughly one of each per 50 chicks, and raise them as the chicks grow so the lip is at back height.',
+        'Fresh, clean water at all times. A chick without water for even a few hours can be set back for days.',
+        'Do not feed adult layer feed to chicks. The extra calcium harms growing chicks. Move to grower feed gradually over 5–7 days when the time comes.',
+        'Weigh a small sample each week. Uneven chicks usually mean too few feeders or drinkers.',
+      ],
+      care: [
+        'Temperature at chick height: about 32–35 °C in week 1, then lower by roughly 2–3 °C each week until the chicks are at about 21–24 °C, usually by week 4–5.',
+        'Read the chicks: huddled under the heat and cheeping loudly = too cold. Spread to the edges, panting, wings open = too hot. Evenly spread and quiet = comfortable.',
+        'Use a chick guard ring about 40–50 cm high around the heat source for the first week, then widen it and remove it by about week 2.',
+        'Give bright, near-continuous light for the first few days so chicks find feed and water, then follow your breed’s lighting guide.',
+        'Check the flock at least 3 times a day, including at night. Remove dead chicks, separate weak ones and wipe pasty (stuck) vents gently.',
+      ],
+      vaccination: [
+        'A typical programme, to be confirmed with your vet: Newcastle disease first dose at about day 7–10 (eye or nose drop); Gumboro (IBD) at about day 14 with a booster at about day 21; Newcastle booster at about day 21–28.',
+        'Keep vaccines cold from the shop to the shed. Never use expired or warm vaccine, and vaccinate in the cool hours of the day.',
+        'For drinking-water vaccines, use clean water without chlorine, remove water for 1–2 hours first so chicks drink eagerly, and use up the mixed vaccine within about 1–2 hours.',
+        'Vaccinate healthy birds only. Dispose of leftover vaccine and empty vials safely.',
+        'Ask your vet about coccidiosis control, either a coccidiostat in the starter feed or a vaccine.',
+      ],
+      accommodation: [
+        'Space: about 20–25 chicks per square metre in the first weeks, and give more room as they grow.',
+        'Heat sources: an electric or infrared lamp, a gas brooder, or a charcoal stove. A charcoal stove needs a chimney and ventilation, because carbon monoxide can kill chicks and people. Never leave one burning in a closed room.',
+        'Keep the house free of draughts at chick level but with fresh air above, so ammonia does not build up.',
+        'Stir the litter daily and replace damp patches straight away.',
+        'Make the house predator-proof with wire mesh and a door that closes. Rats, snakes, cats and hawks take chicks.',
+      ],
+      hygiene: [
+        'Put a footbath with disinfectant at the door and change it every day or when it is dirty.',
+        'Wash drinkers daily and feeders weekly. Never top up a dirty drinker.',
+        'Use the all-in, all-out system: one age group per house, and empty, wash and disinfect the house and rest it for at least 2 weeks before new chicks.',
+        'Keep rats, wild birds and visitors out of the brooder. Keep tools for the brooder separate from those used for older birds.',
+        'Wet litter breeds coccidiosis and ammonia. Fix leaks and spilled water straight away.',
+      ],
+    },
+    watch_for: [
+      'Chicks huddled under the heat, or panting at the edges: adjust the temperature',
+      'Bloody or very watery droppings, ruffled feathers, or chicks that stop eating',
+      'More than a few deaths in a day',
+    ],
+  },
+  {
+    id: 'growers',
+    name: 'Growers',
+    age: 'Week 5–6 → week 18–20',
+    summary:
+      'Layer and kienyeji pullets spend this stage building frame and health for laying. Aim for steady, even growth, dry litter and enough space. Broilers do not reach this stage because they go to market at about 5–6 weeks.',
+    sections: {
+      feeding: [
+        'Move gradually to grower mash (about 14–16% protein) over 5–7 days at about week 6–8, and keep pullets on it until about week 16–18.',
+        'Do not overfeed pullets. Fat pullets lay poorly. Weigh a sample weekly and compare with your breed’s standard.',
+        'Clean water at all times, with enough drinkers so no bird has to push for a drink.',
+        'Free-range and kienyeji birds can be given kitchen scraps and green leaves as a supplement. Do not let supplements replace the balanced mash.',
+        'Never feed mouldy grain or feed. Store feed dry, off the floor and away from rats.',
+      ],
+      care: [
+        'Sort birds by size every few weeks and give small ones extra space and feeder access.',
+        'Check for lice, mites and worms. Ask your vet about a deworming programme, usually about every 3 months for birds that scratch in soil.',
+        'For layer pullets, keep to natural day length. Do not add light before about week 16–18, as early light brings them into lay too soon.',
+        'Introduce perches from about week 8. Free-range birds should have shade, water and a safe place to roost.',
+        'Keep records of weights, feed used and deaths.',
+      ],
+      vaccination: [
+        'Typical programme, to be confirmed with your vet: fowl pox by wing-web stab at about week 6–8, and check the site 7–10 days later for a swelling or scab (the “take”); Newcastle booster at about week 8–10 and again at about week 16–18 before lay.',
+        'For kienyeji and village flocks, a thermostable Newcastle vaccine given every 3 months is widely used. Ask your animal health provider which product is available locally.',
+        'Fowl typhoid, infectious bronchitis and other vaccines depend on the disease risk in your area. Ask your vet.',
+        'Always keep vaccines cold, use them before expiry and follow the label.',
+      ],
+      accommodation: [
+        'Space: about 6–8 birds per square metre on deep litter, more room for heavier breeds and for free-range flocks.',
+        'Feeder space about 7–10 cm and perch space about 15 cm per bird.',
+        'Use open sides with wire mesh for airflow, and a curtain you can lower on cold nights. A roof overhang keeps rain out.',
+        'Make sure the house is secure at night against thieves, rats, dogs and snakes.',
+      ],
+      hygiene: [
+        'Keep litter dry. Wet litter leads to coccidiosis and ammonia. Turn it often and replace caked areas.',
+        'Wash drinkers daily and feeders weekly.',
+        'Isolate any new bird for at least 2 weeks before it joins the flock.',
+        'Remove dead birds immediately and bury them deep or burn them. Do not throw them in the open or feed them to other animals.',
+        'Control flies and rodents, and rotate the range if birds scratch in the same area.',
+      ],
+    },
+    watch_for: [
+      'Uneven growth, pale combs or birds that sit apart from the flock',
+      'Scabby, swollen or crusted lesions on comb or face (fowl pox)',
+      'Bloody droppings or wet, caked litter',
+    ],
+  },
+  {
+    id: 'adults',
+    name: 'Adult birds — layers & breeders',
+    age: 'From about week 18–20',
+    summary:
+      'A laying hen needs balanced feed with enough calcium, constant clean water, steady light, a quiet nest and a clean house. Sudden changes in feed, water, light or noise drop egg production quickly.',
+    sections: {
+      feeding: [
+        'Start layer mash (about 16–17% protein, with about 3.5–4% calcium) when the first eggs appear. A layer usually eats about 110–120 g a day, depending on breed, weather and egg output.',
+        'Never let water run out. A hen drinks about twice as much as she eats, and a few hours without water can drop egg production for days.',
+        'Offer oyster shell or limestone grit in a separate feeder so hens can take calcium as needed.',
+        'Change feed gradually. Feed in the cooler hours in hot weather.',
+        'Free-range and kienyeji hens still need layer mash or a good supplement to lay well.',
+      ],
+      care: [
+        'Once in lay, give 14–16 hours of light a day in total (daylight plus lamp) and never reduce it. A shortening day makes hens stop laying.',
+        'Collect eggs 2–3 times a day. Provide about 1 nest box per 4–5 hens with clean, dry bedding.',
+        'In hot weather give shade, cool water and good airflow. Birds that pant with open beaks are overheating.',
+        'Remove hens that are sick, injured or have stopped laying for a long time. Keep records of eggs per day, feed used and deaths.',
+        'Handle birds calmly. Stress from noise, dogs or new people can drop egg production.',
+      ],
+      vaccination: [
+        'Typical programme, to be confirmed with your vet: a Newcastle booster about every 3 months, and other vaccines such as infectious bronchitis or egg-drop syndrome according to local risk.',
+        'Keep up deworming (about every 3 months for birds that scratch in soil) and treat lice and mites as advised.',
+        'Any treatment, including antibiotics and dewormers, has an egg withdrawal period on the label. Do not sell or eat the eggs until it has passed.',
+        'Use only vaccines suitable for birds in lay, and ask your vet before vaccinating a flock that is laying.',
+      ],
+      accommodation: [
+        'Space: about 4–5 layers per square metre on deep litter, with perches of about 20 cm per bird.',
+        'Keep the house dry, cool and well ventilated. A long axis running east to west reduces heat from the sun.',
+        'Keep feed in a covered, rodent-proof store off the floor.',
+        'Keep nests in a quiet, darker part of the house so hens do not lay on the floor.',
+      ],
+      hygiene: [
+        'Collect and store eggs clean and cool. Do not use eggs with cracked or dirty shells for sale.',
+        'Remove manure and spent litter at the end of every batch, then wash and disinfect the house and rest it before restocking.',
+        'Wash your hands after handling birds, eggs or manure, because chickens can carry germs such as Salmonella.',
+        'Keep chickens away from ducks, turkeys and wild birds, and keep visitors out of the shed or give them clean boots.',
+        'Bury or burn dead birds immediately and report unusual deaths.',
+      ],
+    },
+    watch_for: [
+      'A sudden fall in egg production, soft or thin shells',
+      'Twisted necks, paralysis or green watery droppings',
+      'Swollen head, blue comb, or many birds dying within a day or two: this can be a notifiable disease',
+    ],
+  },
+];
+
+export const POULTRY_VACCINATION_SCHEDULE = [
+  { age: 'Day 1', vaccine: 'Marek’s disease', how: 'Injection at the hatchery', note: 'Ask the hatchery for a record.' },
+  { age: 'Day 7–10', vaccine: 'Newcastle disease (first dose)', how: 'Eye or nose drop', note: 'Live vaccine; keep cold.' },
+  { age: 'Day 14', vaccine: 'Gumboro (IBD)', how: 'Drinking water', note: 'Use chlorine-free water.' },
+  { age: 'Day 21', vaccine: 'Gumboro booster', how: 'Drinking water', note: 'Follow product label.' },
+  { age: 'Day 21–28', vaccine: 'Newcastle booster', how: 'Drinking water or eye drop', note: 'Confirm timing with your vet.' },
+  { age: 'Week 6–8', vaccine: 'Fowl pox', how: 'Wing-web stab', note: 'Check the site for a “take” after 7–10 days.' },
+  { age: 'Week 8–10', vaccine: 'Newcastle booster', how: 'Drinking water or injection', note: 'Depends on the product used.' },
+  { age: 'Week 16–18', vaccine: 'Newcastle booster and other vaccines for lay', how: 'As advised', note: 'Done before point of lay; ask your vet which others apply locally.' },
+  { age: 'Every ~3 months', vaccine: 'Newcastle booster', how: 'As advised', note: 'Thermostable vaccines are common for kienyeji flocks.' },
+];
+
+export const POULTRY_CALL_VET = [
+  'Many birds dying suddenly, or a sudden drop in feed and water intake across the flock',
+  'Twisted necks, paralysis, or green watery droppings',
+  'Swollen head, blue or purple comb, or bleeding under the skin',
+  'Bloody droppings that do not clear within a day',
+  'Sharp fall in egg production with soft or misshapen eggs',
+];
+
+export const POULTRY_CALL_VET_NOTE =
+  'Do not sell, eat or move sick or dead birds. Keep the flock apart and contact your county veterinary officer or animal health provider.';
+
+export function getPoultryGuide() {
+  return {
+    title: 'Poultry from hatchlings to adults',
+    updated: POULTRY_GUIDE_UPDATED,
+    disclaimer: POULTRY_DISCLAIMER,
+    stages: POULTRY_STAGES,
+    vaccinationSchedule: POULTRY_VACCINATION_SCHEDULE,
+    callVet: { signs: POULTRY_CALL_VET, note: POULTRY_CALL_VET_NOTE },
+  };
+}

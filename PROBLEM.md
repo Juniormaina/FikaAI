@@ -39,7 +39,7 @@ FikaAI's MVP demonstrates:
 
 * Field-ready PWA in the Field Utility & Agronomy Directive design system
 * AI intent extraction with ModelScope / Ollama / deterministic fallback
-* Synthetic Kenyan advisory library (maize, beans, tomatoes, potatoes, coffee, dairy cattle) in SQLite
+* Synthetic Kenyan advisory library (maize, beans, tomatoes, potatoes, coffee, dairy cattle, poultry) and a poultry stage guide in SQLite
 * Farm plan + IndexedDB offline continuity
 * Sync state machine (`pending` → `syncing` → `synced` / `failed`)
 * Feedback

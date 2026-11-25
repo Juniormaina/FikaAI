@@ -498,3 +498,29 @@ main { padding-bottom: 2rem; }
   .sheet { border-width: 2px; margin: 0; max-width: none; }
   @page { margin: 12mm; }
 }
+
+/* ---------- Poultry guide ---------- */
+.poultry-title { font-size: clamp(1.6rem, 4vw, 2.4rem); margin: 0.75rem 0; }
+.stage-chips { margin: 1.25rem 0 1rem; }
+.stage-chips .chip { min-height: 48px; padding: 0 1.1rem; font-weight: 700; }
+.stage-chips .chip small { display: block; font-weight: 500; font-size: 0.75rem; opacity: 0.85; }
+.stage-head { background: var(--container-low); border: 1px solid var(--line); border-left: 4px solid var(--forest); border-radius: var(--radius); padding: 1.1rem 1.25rem; }
+.stage-head h3 { font-size: 1.4rem; margin: 0.15rem 0 0.4rem; }
+.stage-head p { margin: 0; color: #3d4a41; max-width: 65ch; }
+.stage-age { font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700; color: var(--amber-deep); text-transform: uppercase; letter-spacing: 0.05em; }
+.stage-grid { display: grid; gap: 1rem; margin-top: 1rem; }
+@media (min-width: 768px) { .stage-grid { grid-template-columns: repeat(2, 1fr); } }
+.stage-card h4 { display: flex; align-items: center; gap: 0.5rem; margin: 0 0 0.6rem; font-size: 1.05rem; }
+.stage-card ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.5rem; }
+.stage-card li { max-width: 65ch; }
+.stage-card.vax { border-left: 4px solid var(--amber); }
+.stage-card.hyg { border-left: 4px solid var(--forest); }
+.watch-card { background: var(--amber-soft); border: 1px solid var(--line); border-left: 4px solid var(--amber); border-radius: var(--radius); padding: 1rem 1.25rem; margin-top: 1rem; }
+.watch-card h4 { margin: 0 0 0.5rem; color: var(--amber-deep); }
+.watch-card ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.35rem; }
+.table-scroll { overflow-x: auto; }
+.vax-table { width: 100%; border-collapse: collapse; min-width: 560px; }
+.vax-table th, .vax-table td { text-align: left; padding: 0.7rem 0.8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+.vax-table th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--slate); }
+.vax-table td:first-child { font-family: var(--font-mono); font-weight: 700; color: var(--amber-deep); white-space: nowrap; }
+.poultry-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.25rem; }

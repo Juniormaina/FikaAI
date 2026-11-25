@@ -45,6 +45,7 @@
 
         <nav class="tabs" role="tablist" aria-label="Sections">
           <button type="button" data-tab="guidance" role="tab" aria-selected="true">Find guidance</button>
+          <button type="button" data-tab="poultry" role="tab" aria-selected="false">Poultry</button>
           <button type="button" data-tab="plan" role="tab" aria-selected="false">Farm plan</button>
           <button type="button" data-tab="channels" role="tab" aria-selected="false">SMS / USSD</button>
         </nav>
@@ -127,6 +128,7 @@
                     <button type="button" class="chip" data-example="Dairy cattle feed in a dry spell">Dairy cattle feed</button>
                     <button type="button" class="chip" data-example="When to plant beans in Nyandarua">Bean planting window</button>
                     <button type="button" class="chip" data-example="Tomato blight in Kiambu">Tomato blight</button>
+                    <button type="button" class="chip" data-example="Chicks huddling under the lamp">Chick brooding</button>
                   </div>
                 </div>
 
@@ -190,7 +192,7 @@
 
               <div class="card stats" id="home-stats">
                 <div><p class="stat-num" id="stat-advisories">–</p><h3>Demo advisories</h3><p>Synthetic guidance records stored in the on-device library.</p></div>
-                <div><p class="stat-num">6</p><h3>Crops &amp; livestock groups</h3><p>Maize, beans, tomatoes, potatoes, coffee, and dairy cattle.</p></div>
+                <div><p class="stat-num">7</p><h3>Crops &amp; livestock groups</h3><p>Maize, beans, tomatoes, potatoes, coffee, dairy cattle, and poultry.</p></div>
                 <div><p class="stat-num amber">2</p><h3>Languages</h3><p>English and Kiswahili replies over SMS and USSD.</p></div>
               </div>
             </div>
@@ -308,6 +310,39 @@
       </section>
 
       <!-- ============ SMS / USSD ============ -->
+      <!-- ============ POULTRY ============ -->
+      <section id="panel-poultry" data-panel="poultry" hidden>
+        <div class="wrap">
+          <div class="view">
+            <span class="pill">General guidance · confirm with your vet</span>
+            <h2 class="poultry-title">Poultry from hatchlings to adult birds</h2>
+            <p class="lede">
+              Feeding, care, vaccination, housing and hygiene for each stage of a chicken’s life. Saved on this device, so it still opens with no signal.
+            </p>
+
+            <div class="chips stage-chips" id="poultry-stages" role="tablist" aria-label="Poultry life stage"></div>
+            <div id="poultry-stage" aria-live="polite"></div>
+
+            <div class="section-head" style="margin-top:2rem">
+              <div>
+                <p class="eyebrow">All stages</p>
+                <h2>Typical vaccination schedule</h2>
+              </div>
+              <p>A common programme. Your vet may change it for your area and your birds.</p>
+            </div>
+            <div class="card table-card"><div class="table-scroll"><table class="vax-table" id="poultry-vax"></table></div></div>
+
+            <div class="card side-card accent-amber" id="poultry-vet" style="margin-top:1.25rem"></div>
+
+            <div class="poultry-actions">
+              <button type="button" class="btn primary" data-poultry-ask="Chicks huddling under the lamp">Ask about a poultry problem</button>
+              <a class="btn" href="/cheatsheet.html">Printable dial sheet</a>
+            </div>
+            <p class="meta" id="poultry-disclaimer" style="margin-top:1rem"></p>
+          </div>
+        </div>
+      </section>
+
       <section id="panel-channels" data-panel="channels" hidden>
         <div class="wrap">
           <div class="view">
@@ -379,6 +414,7 @@
           </a>
           <nav class="links" aria-label="Footer">
             <button type="button" data-goto="guidance">Find guidance</button>
+            <button type="button" data-goto="poultry">Poultry</button>
             <button type="button" data-goto="plan">Saved plans</button>
             <button type="button" data-goto="channels">USSD shortcodes</button>
             <a href="/cheatsheet.html">Dial sheet</a>

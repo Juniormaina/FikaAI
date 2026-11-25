@@ -7,7 +7,7 @@ const SWAHILI = new Set([
   'mifuko', 'mfuko', 'jinsi', 'taarifa', 'chagua', 'maharagwe', 'mchele', 'maziwa',
   'nyanya', 'ngano', 'kahawa', 'sukari', 'lita', 'jumla', 'yote', 'zote', 'kuwa',
   'andika', 'uliza', 'angalia', 'rudi', 'habari', 'shikamoo', 'niaje',
-  'majani', 'manjano', 'wadudu', 'ugonjwa', 'shamba', 'mimea', 'mbolea', 'viwavi', 'tatizo', 'zao',
+  'kuku', 'vifaranga', 'mayai', 'chanjo', 'kuhara', 'damu', 'wanakufa', 'majani', 'manjano', 'wadudu', 'ugonjwa', 'shamba', 'mimea', 'mbolea', 'viwavi', 'tatizo', 'zao',
 ]);
 
 const ENGLISH = new Set([

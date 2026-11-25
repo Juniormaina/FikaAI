@@ -1,4 +1,4 @@
-const CACHE = 'fikaai-agri-v1';
+const CACHE = 'fikaai-agri-v2';
 const FILES = [
   '/',
   '/index.html',

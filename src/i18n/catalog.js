@@ -41,7 +41,7 @@ export const catalog = {
     guidanceHeader: 'Likely: {title} ({percent}% keyword match).',
     guidanceFooter: 'Demo guidance only. Confirm with your extension officer.',
     guidanceClarify: 'Which crop or animal is this about? Example: Maize leaf yellowing in Kiambu.',
-    guidanceEmpty: 'I have no demo guidance for that yet. Try maize, beans, tomatoes, potatoes, coffee, or dairy cattle.',
+    guidanceEmpty: 'I have no demo guidance for that yet. Try maize, beans, tomatoes, potatoes, coffee, dairy cattle, or poultry.',
     explainEmpty: 'You have not recorded anything today.',
     explainIntro: 'Today you recorded {count} {noun}.',
     explainTotal: 'Total: {amount}',

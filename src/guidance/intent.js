@@ -6,12 +6,14 @@
 
 import { detectHazard } from './safety.js';
 
-export const CROPS = ['maize', 'beans', 'tomatoes', 'potatoes', 'coffee', 'dairy cattle'];
+export const CROPS = ['maize', 'beans', 'tomatoes', 'potatoes', 'coffee', 'dairy cattle', 'poultry'];
+const LIVESTOCK_CROPS = ['dairy cattle', 'poultry'];
 export const REGIONS = ['Kiambu', 'Nakuru', 'Nyandarua', 'Machakos'];
 export const TOPICS = ['nutrient', 'pest', 'disease', 'water', 'planting', 'livestock', 'other'];
 export const URGENCIES = ['routine', 'soon', 'unclear'];
 
 const CROP_ALIASES = [
+  { crop: 'poultry', patterns: [/\bpoultry\b/i, /\bchick(?:en)?s?\b/i, /\bhens?\b/i, /\bbroilers?\b/i, /\blayers?\b/i, /\bkienyeji\b/i, /\bkuku\b/i, /\bvifaranga\b/i, /\bfowl\b/i, /\bbrooder\b/i, /\bgumboro\b/i, /\bnewcastle\b/i, /\bcoccidiosis\b/i] },
   { crop: 'dairy cattle', patterns: [/\bdairy\b/i, /\bcows?\b/i, /\bcattle\b/i, /\bng'?ombe\b/i, /\bmastitis\b/i, /\bheifers?\b/i, /\budder\b/i] },
   { crop: 'maize', patterns: [/\bmaize\b/i, /\bcorn\b/i, /\bmahindi\b/i] },
   { crop: 'beans', patterns: [/\bbeans?\b/i, /\bmaharagwe\b/i] },
@@ -47,7 +49,7 @@ const SALE_WORDS = /\b(sold|sell|selling|sale|sales|nimeuza|nauza|kuuza|mauzo|re
 
 const INTENT_SYSTEM_PROMPT = `You extract farming-guidance search intent for FikaAI.
 Return ONLY valid JSON with this exact shape:
-{"crop":"maize|beans|tomatoes|potatoes|coffee|dairy cattle|null","region":"Kiambu|Nakuru|Nyandarua|Machakos|null","topic":"nutrient|pest|disease|water|planting|livestock|other|null","urgency":"routine|soon|unclear","confidence":0.0}
+{"crop":"maize|beans|tomatoes|potatoes|coffee|dairy cattle|poultry|null","region":"Kiambu|Nakuru|Nyandarua|Machakos|null","topic":"nutrient|pest|disease|water|planting|livestock|other|null","urgency":"routine|soon|unclear","confidence":0.0}
 Rules:
 - crop, region and topic must be from the allowed lists or null.
 - Do NOT invent diagnoses, pesticide products, dosages, or weather.
@@ -89,6 +91,7 @@ function normalizeCrop(value) {
   if (text.includes('potato')) return 'potatoes';
   if (text.includes('coffee')) return 'coffee';
   if (text.includes('dairy') || text.includes('cow') || text.includes('cattle')) return 'dairy cattle';
+  if (text.includes('poultry') || text.includes('chicken') || text.includes('chick') || text.includes('hen') || text.includes('broiler') || text.includes('layer')) return 'poultry';
   return null;
 }
 
@@ -100,7 +103,7 @@ function normalizeRegion(value) {
 
 function normalizeTopic(value, crop) {
   if (value == null || value === '' || value === 'null') {
-    return crop === 'dairy cattle' ? 'livestock' : null;
+    return LIVESTOCK_CROPS.includes(crop) ? 'livestock' : null;
   }
   const text = String(value).trim().toLowerCase();
   const match = TOPICS.find((item) => item === text);
@@ -110,7 +113,7 @@ function normalizeTopic(value, crop) {
   if (text.includes('disease') || text.includes('blight')) return 'disease';
   if (text.includes('water') || text.includes('drain')) return 'water';
   if (text.includes('plant') || text.includes('seed')) return 'planting';
-  if (text.includes('livestock') || text.includes('dairy') || text.includes('feed')) return 'livestock';
+  if (text.includes('livestock') || text.includes('dairy') || text.includes('poultry') || text.includes('feed')) return 'livestock';
   return null;
 }
 
@@ -152,7 +155,7 @@ export function fallbackIntent(text) {
   }
   const region = firstMatch(REGION_ALIASES, 'region', input);
   let topic = firstMatch(TOPIC_PATTERNS, 'topic', input);
-  if (!topic && crop === 'dairy cattle') topic = 'livestock';
+  if (!topic && LIVESTOCK_CROPS.includes(crop)) topic = 'livestock';
 
   let confidence = 0.3;
   if (crop) confidence = impliedCrop ? 0.7 : 0.62;
@@ -193,7 +196,7 @@ export function needsClarification(intent) {
 }
 
 export function clarificationPrompt(intent, originalText) {
-  const cropList = 'maize, beans, tomatoes, potatoes, coffee, or dairy cattle';
+  const cropList = 'maize, beans, tomatoes, potatoes, coffee, dairy cattle, or poultry';
   if (intent?.region && !intent?.crop) {
     return `I want to make sure I understand. Which crop or animal is this about in ${intent.region}? For example: ${cropList}.`;
   }

@@ -23,6 +23,8 @@ const state = {
   advisoryCount: null,
   obsKind: 'Leaf symptom',
   swReady: false,
+  poultry: null,
+  poultryStage: null,
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -221,6 +223,7 @@ function showTab(name) {
     tab.setAttribute('aria-selected', String(tab.dataset.tab === name));
   });
   if (name === 'plan') renderPlan();
+  if (name === 'poultry' && !state.poultry) loadPoultry();
   window.scrollTo({ top: 0 });
 }
 
@@ -228,6 +231,73 @@ function showGuidanceView(view) {
   $('#view-search').hidden = view !== 'search';
   $('#view-advisory').hidden = view !== 'advisory';
   window.scrollTo({ top: 0 });
+}
+
+
+/* ---------- Poultry guide ---------- */
+
+const POULTRY_SECTIONS = [
+  { key: 'feeding', title: 'Feeding' },
+  { key: 'care', title: 'Care' },
+  { key: 'vaccination', title: 'Vaccination', cls: 'vax' },
+  { key: 'accommodation', title: 'Accommodation' },
+  { key: 'hygiene', title: 'Hygiene', cls: 'hyg' },
+];
+
+async function loadPoultry() {
+  try {
+    const guide = await api('/api/poultry');
+    state.poultry = guide;
+    await idbSet('poultryGuide', guide).catch(() => {});
+  } catch {
+    state.poultry = await idbGet('poultryGuide').catch(() => null);
+  }
+  renderPoultry();
+}
+
+function renderPoultry() {
+  const guide = state.poultry;
+  const stagesEl = $('#poultry-stages');
+  const stageEl = $('#poultry-stage');
+  if (!guide) {
+    stagesEl.innerHTML = '';
+    stageEl.innerHTML = '<div class="card"><p>The poultry guide is not on this device yet. Open this tab once while online and it will be saved for offline use.</p></div>';
+    return;
+  }
+  if (!state.poultryStage) state.poultryStage = guide.stages[0].id;
+  stagesEl.innerHTML = guide.stages.map((stage) => `
+    <button type="button" class="chip" role="tab" data-poultry-stage="${escapeHtml(stage.id)}" aria-pressed="${stage.id === state.poultryStage}">
+      ${escapeHtml(stage.name)}<small>${escapeHtml(stage.age)}</small>
+    </button>`).join('');
+
+  const stage = guide.stages.find((item) => item.id === state.poultryStage) || guide.stages[0];
+  const sections = POULTRY_SECTIONS.map(({ key, title, cls }) => `
+    <article class="card stage-card ${cls || ''}">
+      <h4>${escapeHtml(title)}</h4>
+      <ul>${(stage.sections[key] || []).map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>
+    </article>`).join('');
+  stageEl.innerHTML = `
+    <div class="stage-head">
+      <span class="stage-age">${escapeHtml(stage.age)}</span>
+      <h3>${escapeHtml(stage.name)}</h3>
+      <p>${escapeHtml(stage.summary)}</p>
+    </div>
+    <div class="stage-grid">${sections}</div>
+    <div class="watch-card">
+      <h4>Watch for</h4>
+      <ul>${(stage.watch_for || []).map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>
+    </div>`;
+
+  $('#poultry-vax').innerHTML = `
+    <thead><tr><th>Age</th><th>Vaccine</th><th>How</th><th>Note</th></tr></thead>
+    <tbody>${guide.vaccinationSchedule.map((row) => `
+      <tr><td>${escapeHtml(row.age)}</td><td>${escapeHtml(row.vaccine)}</td><td>${escapeHtml(row.how)}</td><td>${escapeHtml(row.note)}</td></tr>`).join('')}</tbody>`;
+
+  $('#poultry-vet').innerHTML = `
+    <h3>Call your vet or animal health provider if you see</h3>
+    <ul style="margin:0.4rem 0;padding-left:1.1rem;display:grid;gap:0.3rem">${guide.callVet.signs.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>
+    <p><strong>${escapeHtml(guide.callVet.note)}</strong></p>`;
+  $('#poultry-disclaimer').textContent = guide.disclaimer;
 }
 
 /* ---------- Home plan preview ---------- */
@@ -809,6 +879,7 @@ async function bootstrap() {
   }
 
   renderQuickDial();
+  loadPoultry();
   setBrowserOnline(navigator.onLine);
   renderPlan();
 }
@@ -816,6 +887,23 @@ async function bootstrap() {
 function bindEvents() {
   document.querySelectorAll('[data-tab]').forEach((tab) => {
     tab.addEventListener('click', () => showTab(tab.dataset.tab));
+  });
+
+  // Poultry stage chips and the ask-a-question shortcut are rendered/handled by delegation.
+  document.addEventListener('click', (event) => {
+    const stageBtn = event.target.closest('[data-poultry-stage]');
+    if (stageBtn) {
+      state.poultryStage = stageBtn.dataset.poultryStage;
+      renderPoultry();
+      return;
+    }
+    const ask = event.target.closest('[data-poultry-ask]');
+    if (ask) {
+      showTab('guidance');
+      showGuidanceView('search');
+      $('#guidance-input').value = ask.dataset.poultryAsk;
+      findGuidance(ask.dataset.poultryAsk);
+    }
   });
 
   // Delegated: buttons rendered later (e.g. quick-dial, plan preview) use data-goto/data-dial/data-copy.

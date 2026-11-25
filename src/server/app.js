@@ -9,6 +9,7 @@ import { createHeuristicLocalModel } from '../agent/local-model.js';
 import { createOrchestrator } from '../agent/orchestrator.js';
 import { createGateway } from '../gateway/gateway.js';
 import { createTextChannel } from '../channels/text-channel.js';
+import { getPoultryGuide } from '../guidance/poultry-guide.js';
 import { createUssdChannel } from '../channels/ussd.js';
 import { syncQueue } from '../offline/sync.js';
 import {
@@ -205,6 +206,10 @@ export function createApp(options = {}) {
     const crop = req.query.crop ? String(req.query.crop) : null;
     const advisories = (crop ? repo.searchAdvisories({ crop }) : repo.listAdvisories()).map(toAdvisoryRow);
     res.json({ advisories, demoNotice: 'Synthetic agri data — for demonstration only' });
+  }));
+
+  app.get('/api/poultry', wrap((req, res) => {
+    res.json(getPoultryGuide());
   }));
 
   app.get('/api/guidance/advisories/:id', wrap((req, res) => {
