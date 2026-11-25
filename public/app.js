@@ -278,6 +278,19 @@ function showGuidanceView(view) {
 
 /* ---------- Poultry guide ---------- */
 
+const POULTRY_PHOTOS = {
+  hatching: { file: 'brooding-chicks', alt: 'A farmer holding a day-old chick under a brooder lamp' },
+  brooding: { file: 'brooding-chicks', alt: 'Chicks resting on dry shavings under a brooder lamp' },
+  growers: { file: 'free-range-homestead', alt: 'Young and growing birds foraging near a coop' },
+  adults: { file: 'coop-layers', alt: 'Laying hens at the nest boxes with a basket of eggs' },
+};
+
+function stagePhotoHtml(stageId) {
+  const photo = POULTRY_PHOTOS[stageId];
+  if (!photo) return '';
+  return `<img class="stage-photo" src="/img/${photo.file}-1280.webp" srcset="/img/${photo.file}-640.webp 640w, /img/${photo.file}-1280.webp 1280w" sizes="(min-width:1024px) 420px, 100vw" alt="${escapeHtml(photo.alt)}" loading="lazy" decoding="async" />`;
+}
+
 const POULTRY_SECTIONS = [
   { key: 'feeding', title: 'Feeding' },
   { key: 'care', title: 'Care' },
@@ -323,10 +336,13 @@ function renderPoultry() {
       <ul>${(stage.sections[key] || []).map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>
     </article>`).join('');
   stageEl.innerHTML = `
-    <div class="stage-head">
+    <div class="stage-head with-photo">
+      ${stagePhotoHtml(stage.id)}
+      <div class="stage-head-copy">
       <span class="stage-age">${escapeHtml(stage.age)}</span>
       <h3>${escapeHtml(stage.name)}</h3>
       <p>${escapeHtml(stage.summary)}</p>
+      </div>
     </div>
     <div class="stage-grid">${sections}</div>
     <div class="watch-card">
@@ -456,7 +472,12 @@ function renderResults(advisories) {
       $('#guidance-input').focus();
       resetResults();
     });
-    host.append(empty, retry);
+    const photo = document.createElement('img');
+    photo.className = 'empty-photo';
+    photo.src = '/img/tomatoes-beans-640.webp';
+    photo.alt = 'Hands holding tomatoes and green beans over garden soil';
+    photo.loading = 'lazy';
+    host.append(photo, empty, retry);
     return;
   }
 
