@@ -68,6 +68,21 @@ CREATE TABLE IF NOT EXISTS agent_activity (
   created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS auth_codes (
+  phone TEXT PRIMARY KEY,
+  code_hash TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  sent_count INTEGER NOT NULL DEFAULT 1,
+  window_start INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS auth_sessions (
+  token_hash TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  expires_at INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL

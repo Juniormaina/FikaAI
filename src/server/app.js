@@ -11,6 +11,12 @@ import { createGateway } from '../gateway/gateway.js';
 import { createTextChannel } from '../channels/text-channel.js';
 import { getPoultryGuide } from '../guidance/poultry-guide.js';
 import { createUssdChannel } from '../channels/ussd.js';
+import {
+  AuthError,
+  createAfricasTalkingSender,
+  createAuth,
+  createConsoleSender,
+} from '../auth/auth.js';
 import { syncQueue } from '../offline/sync.js';
 import {
   createPlanFromAdvisory,
@@ -78,9 +84,65 @@ export function createApp(options = {}) {
     next();
   });
 
-  function readUserId(value) {
+  const sender = options.smsSender ?? (config.atUsername && config.atApiKey
+    ? createAfricasTalkingSender({
+      username: config.atUsername,
+      apiKey: config.atApiKey,
+      senderId: config.atSenderId,
+      sandbox: config.atSandbox,
+    })
+    : createConsoleSender());
+  const auth = createAuth({ repo, sender, demoCodes: Boolean(config.authDemoCodes) });
+
+  function bearer(req) {
+    const header = String(req.headers.authorization || '');
+    return header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+  }
+
+  app.use('/api', (req, res, next) => {
+    const session = auth.sessionFromToken(bearer(req));
+    if (session) req.auth = session;
+    next();
+  });
+
+  // Phone + SMS code sign-in. Responses never reveal whether a number already has an account.
+  app.post('/api/auth/request-code', wrap(async (req, res) => {
+    try {
+      res.json({ ok: true, ...(await auth.requestCode(req.body?.phone)) });
+    } catch (error) {
+      if (error instanceof AuthError) throw httpError(error.status, error.message);
+      throw error;
+    }
+  }));
+
+  app.post('/api/auth/verify', wrap((req, res) => {
+    try {
+      res.json({ ok: true, ...auth.verifyCode(req.body?.phone, req.body?.code) });
+    } catch (error) {
+      if (error instanceof AuthError) throw httpError(error.status, error.message);
+      throw error;
+    }
+  }));
+
+  app.get('/api/auth/me', wrap((req, res) => {
+    if (!req.auth) throw httpError(401, 'Not signed in');
+    const user = repo.getUser(req.auth.userId);
+    res.json({ userId: req.auth.userId, phoneMasked: user?.displayName || null });
+  }));
+
+  app.post('/api/auth/logout', wrap((req, res) => {
+    auth.logout(bearer(req));
+    res.json({ ok: true });
+  }));
+
+  function readUserId(value, req) {
+    // A valid session always wins over any userId the client sends.
+    if (req?.auth) return req.auth.userId;
+    if (config.authRequired) throw httpError(401, 'Sign in to continue');
     const id = String(value || config.defaultUserId).trim();
     if (!/^[a-zA-Z0-9_-]{1,64}$/.test(id)) throw httpError(400, 'Invalid userId');
+    // Phone-derived accounts (p2547...) are only reachable with their own session.
+    if (/^p\d{10,15}$/.test(id)) throw httpError(401, 'Sign in to continue');
     return id;
   }
 
@@ -102,6 +164,7 @@ export function createApp(options = {}) {
       ok: true,
       status: 'ok',
       service: 'fikaai',
+      auth: { enabled: true, required: Boolean(config.authRequired) },
       storage: 'sqlite',
       connectivity: await connectivity.getMode(),
       llm: {
@@ -150,7 +213,7 @@ export function createApp(options = {}) {
   }));
 
   app.get('/api/bootstrap', wrap(async (req, res) => {
-    const userId = readUserId(req.query.userId);
+    const userId = readUserId(req.query.userId, req);
     const user = repo.ensureUser(userId);
     const plan = repo.latestPlan(userId);
     res.json({
@@ -184,7 +247,7 @@ export function createApp(options = {}) {
   }));
 
   app.post('/api/guidance/search', wrap(async (req, res) => {
-    const userId = readUserId(req.body?.userId);
+    const userId = readUserId(req.body?.userId, req);
     const text = readText(req.body?.text);
     const online = await connectivity.isOnline();
     // When demo connectivity is offline, skip hosted AI and use deterministic fallback.
@@ -219,7 +282,7 @@ export function createApp(options = {}) {
   }));
 
   app.post('/api/guidance/plans', wrap((req, res) => {
-    const userId = readUserId(req.body?.userId);
+    const userId = readUserId(req.body?.userId, req);
     const advisoryId = String(req.body?.advisoryId || '').trim();
     if (!advisoryId) throw httpError(400, 'advisoryId is required');
     const plan = createPlanFromAdvisory({
@@ -234,21 +297,21 @@ export function createApp(options = {}) {
   }));
 
   app.get('/api/guidance/plans/latest', wrap((req, res) => {
-    const userId = readUserId(req.query.userId);
+    const userId = readUserId(req.query.userId, req);
     const plan = repo.latestPlan(userId);
     const actions = plan ? repo.listPlanActions(plan.id) : [];
     res.json({ plan, actions });
   }));
 
   app.get('/api/guidance/plans/:id', wrap((req, res) => {
-    const userId = readUserId(req.query.userId);
+    const userId = readUserId(req.query.userId, req);
     const plan = repo.getPlan(req.params.id, userId);
     if (!plan) throw httpError(404, 'Plan not found');
     res.json({ plan, actions: repo.listPlanActions(plan.id) });
   }));
 
   app.post('/api/guidance/plans/:id/actions', wrap((req, res) => {
-    const userId = readUserId(req.body?.userId);
+    const userId = readUserId(req.body?.userId, req);
     const actionType = String(req.body?.actionType || 'note').trim().slice(0, 64);
     const payload = req.body?.payload && typeof req.body.payload === 'object'
       ? req.body.payload
@@ -265,7 +328,7 @@ export function createApp(options = {}) {
   }));
 
   app.post('/api/guidance/plans/:id/sync', wrap(async (req, res) => {
-    const userId = readUserId(req.body?.userId);
+    const userId = readUserId(req.body?.userId, req);
     if (!(await connectivity.isOnline())) {
       throw httpError(409, 'Cannot sync while offline');
     }
@@ -275,7 +338,7 @@ export function createApp(options = {}) {
   }));
 
   app.post('/api/guidance/feedback', wrap((req, res) => {
-    const userId = readUserId(req.body?.userId);
+    const userId = readUserId(req.body?.userId, req);
     const rating = String(req.body?.rating || '').trim().toLowerCase();
     if (!['yes', 'partly', 'no'].includes(rating)) {
       throw httpError(400, 'rating must be yes, partly, or no');
@@ -309,15 +372,15 @@ export function createApp(options = {}) {
   }));
 
   app.get('/api/queue', wrap((req, res) => {
-    res.json({ items: repo.listQueue(readUserId(req.query.userId)) });
+    res.json({ items: repo.listQueue(readUserId(req.query.userId, req)) });
   }));
 
   app.get('/api/records', wrap((req, res) => {
-    res.json({ records: repo.listRecords(readUserId(req.query.userId)) });
+    res.json({ records: repo.listRecords(readUserId(req.query.userId, req)) });
   }));
 
   app.patch('/api/records/:id', wrap((req, res) => {
-    const userId = readUserId(req.body?.userId);
+    const userId = readUserId(req.body?.userId, req);
     const patch = {};
     if (req.body?.amountKes !== undefined) {
       const amount = Number(req.body.amountKes);
@@ -336,24 +399,24 @@ export function createApp(options = {}) {
   }));
 
   app.delete('/api/records/:id', wrap((req, res) => {
-    const userId = readUserId(req.query.userId);
+    const userId = readUserId(req.query.userId, req);
     const removed = repo.deleteRecord(req.params.id, userId);
     if (!removed) throw httpError(404, 'Record not found');
     res.json({ ok: true });
   }));
 
   app.get('/api/messages', wrap((req, res) => {
-    const userId = readUserId(req.query.userId);
+    const userId = readUserId(req.query.userId, req);
     const channel = req.query.channel ? String(req.query.channel) : undefined;
     res.json({ messages: repo.listMessages(userId, channel) });
   }));
 
   app.get('/api/activity', wrap((req, res) => {
-    res.json({ activity: repo.listActivity(readUserId(req.query.userId)) });
+    res.json({ activity: repo.listActivity(readUserId(req.query.userId, req)) });
   }));
 
   app.post('/api/language', wrap((req, res) => {
-    const userId = readUserId(req.body?.userId);
+    const userId = readUserId(req.body?.userId, req);
     const language = req.body?.language === 'sw' ? 'sw' : 'en';
     const user = repo.setLanguage(userId, language);
     repo.saveUssdSession(userId, { state: 'menu', mode: null });
@@ -361,23 +424,23 @@ export function createApp(options = {}) {
   }));
 
   app.post('/api/demo-data/clear', wrap((req, res) => {
-    const userId = readUserId(req.body?.userId);
+    const userId = readUserId(req.body?.userId, req);
     repo.clearUserData(userId);
     res.json({ ok: true });
   }));
 
   app.post('/api/channels/web', wrap(async (req, res) => {
-    const result = await channels.web.handleTurn(readUserId(req.body?.userId), readText(req.body?.text));
+    const result = await channels.web.handleTurn(readUserId(req.body?.userId, req), readText(req.body?.text));
     res.json(result);
   }));
 
   app.post('/api/channels/sms', wrap(async (req, res) => {
-    const result = await channels.sms.handleTurn(readUserId(req.body?.userId), readText(req.body?.text));
+    const result = await channels.sms.handleTurn(readUserId(req.body?.userId, req), readText(req.body?.text));
     res.json(result);
   }));
 
   app.post('/api/channels/ussd', wrap(async (req, res) => {
-    const userId = readUserId(req.body?.userId);
+    const userId = readUserId(req.body?.userId, req);
     const input = req.body?.input === undefined || req.body?.input === null ? '' : String(req.body.input);
     if (input.length > 1000) throw httpError(400, 'Text is too long');
     res.json(await channels.ussd.handleTurn(userId, input));
