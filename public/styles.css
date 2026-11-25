@@ -547,7 +547,7 @@ main { padding-bottom: 2rem; }
 /* Hero */
 .hero-side { display: grid; gap: 1rem; }
 .hero-art { display: none; margin: 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: #E4F5EA; }
-.hero-art svg { display: block; width: 100%; height: auto; aspect-ratio: 480 / 300; }
+.hero-art img { display: block; width: 100%; height: auto; aspect-ratio: 480 / 300; object-fit: cover; object-position: 50% 60%; }
 .hero-art figcaption { padding: 0.65rem 1rem; background: #fff; border-top: 1px solid var(--line); font-size: 0.85rem; color: var(--slate); }
 @media (min-width: 1024px) { .hero-art { display: block; } }
 
@@ -651,3 +651,18 @@ body > .site-footer { margin-top: 2rem; }
 .signin input:focus-visible { outline: 3px solid var(--amber); outline-offset: 1px; }
 .signin-error { margin: 0.75rem 0 0; padding: 0.6rem 0.8rem; border-radius: 0.6rem; background: var(--amber-soft); color: var(--amber-deep); font-weight: 700; }
 .signin-actions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-top: 1.25rem; }
+
+/* Photography */
+.poultry-banner { display: block; width: 100%; height: clamp(10rem, 28vw, 18rem); object-fit: cover; object-position: 50% 62%; border: 1px solid var(--line); border-radius: var(--radius); margin: 0 0 1rem; background: var(--container-low); }
+.stage-head.with-photo { display: grid; gap: 1rem; padding: 0; overflow: hidden; }
+.stage-head.with-photo .stage-photo { display: block; width: 100%; height: 12rem; object-fit: cover; background: var(--container-low); }
+.stage-head-copy { padding: 1.1rem 1.25rem; }
+@media (min-width: 720px) {
+  .stage-head.with-photo { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 0; align-items: stretch; }
+  .stage-head.with-photo .stage-photo { height: 100%; min-height: 13rem; }
+}
+.empty-photo { display: block; width: 100%; max-width: 32rem; height: auto; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--line); margin-bottom: 1rem; }
+.empty-state .empty-photo { max-height: 14rem; aspect-ratio: 16 / 9; }
+
+#auth-btn { white-space: nowrap; }
+@media (max-width: 720px) { #auth-btn { min-height: 44px; padding: 0 0.9rem; font-size: 0.9rem; } }

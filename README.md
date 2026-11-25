@@ -38,6 +38,7 @@ Features implemented in this repository:
 * SMS and USSD simulators (`*384*40#`, demo codes) in English and Kiswahili, including sale recording and a menu-driven poultry guide (`*384*40*5#`: stage, then feeding, care, vaccines, housing or hygiene, in screens under 182 characters)
 * Poultry life-stage guide (hatching, brooding, growers, adult layers) covering feeding, care, vaccination, accommodation and hygiene, with a vaccination schedule table and vet red flags; cached on the device for offline use; also shipped as static `public/poultry-guide.json` so the tab works on static hosts (regenerate with `npm run build:poultry` after editing the guide)
 * Plain-language privacy notice at `/privacy.html` (operator contact still to be added before launch)
+* Photography: hero, per-stage poultry photos and empty states use optimised WebP files in `public/img/` (640 px and 1280 px, 640 px precached for offline)
 * Mobile layout with a bottom tab bar (screens up to 720px wide)
 * Printable bilingual dial sheet at `/cheatsheet.html`
 
