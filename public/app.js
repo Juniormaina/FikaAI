@@ -381,18 +381,11 @@ function stepsHtml(steps) {
   `).join('');
 }
 
-function advisoryCardHtml(advisory, { detail = false } = {}) {
+function advisoryCardHtml(advisory, { detail = false, open = false } = {}) {
   const urgency = URGENCY[advisory.urgency] || URGENCY.advisory;
   const checks = detail ? advisory.fieldChecks : advisory.fieldChecks.slice(0, 2);
   const match = advisory.matchPercent != null ? `<span class="pill warn">${advisory.matchPercent}% keyword match</span>` : '';
-  return `
-    <div class="chips-row">
-      ${match}
-      <span class="pill ${urgency.cls}">${urgency.label}</span>
-      <span class="pill plain">${escapeHtml(CATEGORY_LABEL[advisory.category] || advisory.category)}</span>
-    </div>
-    <h3>${escapeHtml(advisory.title)}</h3>
-    <p class="summary">${escapeHtml(advisory.summary)}</p>
+  const body = `
     <div class="confirm-box">
       <h4>Step-by-step field confirmation</h4>
       <ol>${stepsHtml(checks)}</ol>
@@ -402,7 +395,16 @@ function advisoryCardHtml(advisory, { detail = false } = {}) {
       <p>${escapeHtml(advisory.remediation)}</p>
       ${advisory.caution ? `<p class="caution">${icon('alert')}<span>${escapeHtml(advisory.caution)}</span></p>` : ''}
     </div>
-    <p class="meta">Guidance ID: ${escapeHtml(advisory.protocolRef)} · ${escapeHtml(advisory.dataSource)} · Updated ${escapeHtml(advisory.lastUpdatedLabel)}</p>
+    <p class="meta">Guidance ID: ${escapeHtml(advisory.protocolRef)} · ${escapeHtml(advisory.dataSource)} · Updated ${escapeHtml(advisory.lastUpdatedLabel)}</p>`;
+  return `
+    <div class="chips-row">
+      ${match}
+      <span class="pill ${urgency.cls}">${urgency.label}</span>
+      <span class="pill plain">${escapeHtml(CATEGORY_LABEL[advisory.category] || advisory.category)}</span>
+    </div>
+    <h3>${escapeHtml(advisory.title)}</h3>
+    <p class="summary">${escapeHtml(advisory.summary)}</p>
+    ${detail ? body : `<details class="more"${open ? ' open' : ''}><summary><span>Field checks &amp; remediation</span></summary>${body}</details>`}
   `;
 }
 
@@ -428,10 +430,11 @@ function renderResults(advisories) {
     return;
   }
 
-  for (const advisory of advisories) {
+  document.body.dataset.view = 'results';
+  advisories.forEach((advisory, index) => {
     const card = document.createElement('article');
     card.className = `advisory-card${advisory.urgency === 'urgent' ? ' urgent' : ''}`;
-    card.innerHTML = advisoryCardHtml(advisory);
+    card.innerHTML = advisoryCardHtml(advisory, { open: index === 0 });
 
     const actions = document.createElement('div');
     actions.className = 'card-actions';
@@ -460,10 +463,15 @@ function renderResults(advisories) {
     actions.append(save, view, sms);
     card.append(actions, preview);
     host.append(card);
-  }
+  });
+  requestAnimationFrame(() => {
+    const target = $('#intent-panel').hidden ? $('#results-layout') : $('#intent-panel');
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
 }
 
 function resetResults() {
+  delete document.body.dataset.view;
   $('#results').replaceChildren();
   $('#results-layout').hidden = true;
   $('#home-sections').hidden = false;
@@ -518,7 +526,7 @@ async function findGuidance(text) {
       return;
     }
 
-    if (result.notice) showNotice(result.notice, 'warn');
+    if (result.notice && !result.intent) showNotice(result.notice, 'warn');
     else if (result.kind === 'empty') showNotice(result.message);
     else showNotice('');
 
