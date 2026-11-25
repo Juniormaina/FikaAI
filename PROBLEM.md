@@ -32,7 +32,7 @@ FikaAI's MVP demonstrates:
 * deterministic ranking over a synthetic advisory library
 * a lightweight farm plan with a step checklist and field observations
 * offline persistence and reconnection sync
-* SMS and USSD access for feature phones, in English and Kiswahili
+* SMS and USSD access for feature phones, in English and Kiswahili, including a poultry guide by USSD
 * responsible limits (no diagnosis, no invented products or rates, hazard redirect to medical, veterinary or extension help)
 
 ## MVP Scope

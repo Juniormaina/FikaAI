@@ -25,7 +25,7 @@ describe('channels share one agent', () => {
     expect(ctx.channels.web.inbound.channel).toBe('web');
 
     const menu = await ctx.channels.ussd.handleTurn('buyer', '');
-    expect(menu.display).toBe('FIKAAI AGRO ADVISORY\n\n1. Crop or animal problem\n2. Record a sale\n3. View sales\n4. Help\n\nSelect:');
+    expect(menu.display).toBe('FIKAAI AGRO ADVISORY\n\n1. Crop or animal problem\n2. Record a sale\n3. View sales\n4. Help\n5. Poultry guide\n\nSelect:');
 
     const view = await ctx.channels.ussd.handleTurn('buyer', '3');
     expect(view.response.text).toContain('maize');
@@ -95,5 +95,44 @@ describe('channels share one agent', () => {
     expect(ask.display).toContain('Describe the crop or animal problem');
     const answer = await ctx.channels.ussd.handleTurn('farmer', 'Tomato blight in Kiambu');
     expect(answer.response.text).toContain('tomato blight');
+  });
+
+  it('walks the poultry guide over USSD: stage, topic, back', async () => {
+    const stages = await ctx.channels.ussd.handleTurn('farmer', '*384*40*5#');
+    expect(stages.display).toContain('POULTRY GUIDE');
+    expect(stages.display).toContain('2. Brooding chicks');
+
+    const topics = await ctx.channels.ussd.handleTurn('farmer', '2');
+    expect(topics.display).toContain('Brooding chicks');
+    expect(topics.display).toContain('2. Care');
+
+    const care = await ctx.channels.ussd.handleTurn('farmer', '2');
+    expect(care.display).toContain('32-35C in week 1');
+
+    const backToTopics = await ctx.channels.ussd.handleTurn('farmer', '0');
+    expect(backToTopics.display).toContain('Select topic:');
+    const backToStages = await ctx.channels.ussd.handleTurn('farmer', '0');
+    expect(backToStages.display).toContain('Select stage:');
+    const backToMenu = await ctx.channels.ussd.handleTurn('farmer', '0');
+    expect(backToMenu.display).toContain('FIKAAI AGRO ADVISORY');
+  });
+
+  it('rejects invalid poultry choices and keeps the user in place', async () => {
+    await ctx.channels.ussd.handleTurn('farmer', '5');
+    const bad = await ctx.channels.ussd.handleTurn('farmer', '9');
+    expect(bad.display).toContain('Select stage:');
+    expect(bad.display).toContain('POULTRY GUIDE');
+  });
+
+  it('keeps every poultry USSD screen within 182 characters in both languages', async () => {
+    const { POULTRY_USSD_TEXT, POULTRY_USSD_STAGES, POULTRY_USSD_TOPICS } = await import('../src/guidance/poultry-ussd.js');
+    for (const lang of ['en', 'sw']) {
+      for (const stage of POULTRY_USSD_STAGES) {
+        for (const topic of POULTRY_USSD_TOPICS) {
+          const screen = `${POULTRY_USSD_TEXT[lang][stage][topic]}\n0. Back`;
+          expect(screen.length, `${lang}/${stage}/${topic}`).toBeLessThanOrEqual(182);
+        }
+      }
+    }
   });
 });
