@@ -641,3 +641,13 @@ body > .site-footer { margin-top: 2rem; }
 .quickdial .card { display: flex; flex-direction: column; align-items: flex-start; }
 .quickdial .card .code { margin-top: auto; align-self: stretch; }
 .quickdial .card .meta { margin-bottom: 0.75rem; }
+
+/* Sign-in dialog */
+.signin { border: 2px solid var(--ink); border-radius: 1.25rem; padding: 1.5rem; max-width: min(26rem, calc(100vw - 2rem)); width: 100%; background: var(--card); color: var(--ink); box-shadow: 4px 4px 0 var(--ink); }
+.signin::backdrop { background: rgb(24 32 28 / 0.55); }
+.signin h2 { margin: 0 0 0.25rem; font-size: 1.35rem; }
+.signin label { display: block; font-weight: 700; margin: 1rem 0 0.35rem; }
+.signin input { width: 100%; min-height: 48px; padding: 0 0.9rem; font: inherit; font-size: 1.1rem; border: 1px solid var(--line); border-radius: 0.75rem; background: #fff; }
+.signin input:focus-visible { outline: 3px solid var(--amber); outline-offset: 1px; }
+.signin-error { margin: 0.75rem 0 0; padding: 0.6rem 0.8rem; border-radius: 0.6rem; background: var(--amber-soft); color: var(--amber-deep); font-weight: 700; }
+.signin-actions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-top: 1.25rem; }

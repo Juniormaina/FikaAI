@@ -3,7 +3,28 @@
  * IndexedDB caches the saved farm plan so it stays usable with no signal.
  */
 
-const userId = 'demo-user';
+const DEMO_USER = 'demo-user';
+const AUTH_KEY = 'fikaai.auth';
+let userId = DEMO_USER;
+let authInfo = null; // { token, userId, phoneMasked } when signed in
+
+function loadAuth() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(AUTH_KEY) || 'null');
+    if (saved?.token && saved?.userId) return saved;
+  } catch { /* storage unavailable */ }
+  return null;
+}
+
+function saveAuth(value) {
+  try {
+    if (value) localStorage.setItem(AUTH_KEY, JSON.stringify(value));
+    else localStorage.removeItem(AUTH_KEY);
+  } catch { /* storage unavailable */ }
+}
+
+authInfo = loadAuth();
+if (authInfo) userId = authInfo.userId;
 const DB_NAME = 'fikaai-agri';
 const DB_VERSION = 1;
 const STORE = 'plan';
@@ -121,12 +142,20 @@ async function api(path, options = {}) {
   const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
   try {
     const response = await fetch(path, {
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+        ...(authInfo ? { Authorization: `Bearer ${authInfo.token}` } : {}),
+      },
       ...options,
       signal: controller.signal,
     });
     const isJson = (response.headers.get('content-type') || '').includes('json');
     const data = isJson ? await response.json().catch(() => ({})) : {};
+    if (response.status === 401 && authInfo && !path.startsWith('/api/auth/')) {
+      // Session expired or revoked: drop it and ask again.
+      await finishAuthChange(null);
+    }
     if (!response.ok) throw new Error(data.error || response.statusText || 'Request failed');
     // A static host can answer /api/* with an HTML page; treat that as "backend unavailable".
     if (!isJson) throw new Error('Backend unavailable');
@@ -866,11 +895,98 @@ async function dial(code) {
 
 /* ---------- Boot ---------- */
 
+// ---- Phone sign-in (shown only when the backend offers it) ----
+const authState = { enabled: false, required: false, phone: '', step: 'phone' };
+
+function renderAuthButton() {
+  const btn = $('#auth-btn');
+  if (!btn) return;
+  btn.hidden = !authState.enabled;
+  btn.textContent = authInfo ? `Sign out · ${authInfo.phoneMasked || 'account'}` : 'Sign in';
+}
+
+async function finishAuthChange(next) {
+  authInfo = next;
+  userId = next ? next.userId : DEMO_USER;
+  saveAuth(next);
+  // Cached plans belong to whoever was signed in; do not show them to the next person.
+  await Promise.all(['activePlan', 'lastSearch', 'lastFeedback'].map((key) => idbSet(key, null).catch(() => {})));
+  window.location.reload();
+}
+
+function setAuthStep(step) {
+  authState.step = step;
+  $('#signin-step-phone').hidden = step !== 'phone';
+  $('#signin-step-code').hidden = step !== 'code';
+  $('#signin-submit').textContent = step === 'phone' ? 'Send code' : 'Verify';
+  $('#signin-error').hidden = true;
+  $(step === 'phone' ? '#signin-phone' : '#signin-code').focus();
+}
+
+function openSignIn() {
+  const dialog = $('#signin');
+  if (!dialog || dialog.open) return;
+  $('#signin-cancel').hidden = authState.required;
+  setAuthStep('phone');
+  dialog.showModal();
+}
+
+async function submitSignIn(event) {
+  event.preventDefault();
+  const error = $('#signin-error');
+  const submit = $('#signin-submit');
+  error.hidden = true;
+  submit.disabled = true;
+  try {
+    if (authState.step === 'phone') {
+      authState.phone = $('#signin-phone').value;
+      const result = await api('/api/auth/request-code', { method: 'POST', body: JSON.stringify({ phone: authState.phone }) });
+      const demo = $('#signin-demo');
+      demo.hidden = !result.demoCode;
+      demo.textContent = result.demoCode ? `Demo mode: your code is ${result.demoCode}` : '';
+      setAuthStep('code');
+    } else {
+      const result = await api('/api/auth/verify', {
+        method: 'POST',
+        body: JSON.stringify({ phone: authState.phone, code: $('#signin-code').value }),
+      });
+      $('#signin').close();
+      await finishAuthChange({ token: result.token, userId: result.userId, phoneMasked: result.phoneMasked });
+    }
+  } catch (err) {
+    error.textContent = err.message;
+    error.hidden = false;
+  } finally {
+    submit.disabled = false;
+  }
+}
+
+async function initAuth() {
+  try {
+    const health = await api('/api/health');
+    authState.enabled = Boolean(health.auth?.enabled);
+    authState.required = Boolean(health.auth?.required);
+  } catch {
+    authState.enabled = false; // static host or offline: stay in local mode
+  }
+  renderAuthButton();
+  $('#auth-btn')?.addEventListener('click', () => (authInfo ? signOut() : openSignIn()));
+  $('#signin-form')?.addEventListener('submit', submitSignIn);
+  $('#signin-cancel')?.addEventListener('click', () => $('#signin').close());
+  if (authState.required && !authInfo) openSignIn();
+}
+
+async function signOut() {
+  try { await api('/api/auth/logout', { method: 'POST', body: '{}' }); } catch { /* already gone */ }
+  await finishAuthChange(null);
+}
+
 async function bootstrap() {
   // Draw immediately from what is saved on this device; the network only refreshes it.
   await restorePlanFromCache();
   setBrowserOnline(navigator.onLine);
   renderPlan();
+  await initAuth();
 
   try {
     const data = await api(`/api/bootstrap?userId=${encodeURIComponent(userId)}`);
@@ -895,7 +1011,12 @@ async function bootstrap() {
   } catch {
     await restorePlanFromCache();
     state.advisoryCount = await idbGet('advisoryCount').catch(() => null);
-    showNotice('Backend unavailable. Showing the saved plan from this device if available.', 'warn');
+    showNotice(
+      authState.required && !authInfo
+        ? 'Sign in with your phone number to see your plan.'
+        : 'Backend unavailable. Showing the saved plan from this device if available.',
+      'warn',
+    );
   }
 
   try {

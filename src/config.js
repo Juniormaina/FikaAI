@@ -34,6 +34,12 @@ export function loadConfig(env = process.env) {
       ? modelscopeModel
       : DEFAULT_MODELSCOPE_MODEL,
     llmProvider: normalizeProvider(env.LLM_PROVIDER),
+    authRequired: flag(env.AUTH_REQUIRED, false),
+    authDemoCodes: flag(env.AUTH_DEMO_CODES, false),
+    atUsername: String(env.AT_USERNAME || '').trim(),
+    atApiKey: String(env.AT_API_KEY || '').trim(),
+    atSenderId: String(env.AT_SENDER_ID || '').trim(),
+    atSandbox: flag(env.AT_SANDBOX, false),
     defaultUserId: env.DEFAULT_USER_ID || 'demo-user',
     connectivityMode: String(env.CONNECTIVITY_MODE || '').toLowerCase() === 'offline' ? 'offline' : 'online',
     root,

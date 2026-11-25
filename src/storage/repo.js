@@ -78,6 +78,45 @@ export function createRepo(db) {
       return this.getUser(id);
     },
 
+    getAuthCode(phone) {
+      const r = db.prepare('SELECT * FROM auth_codes WHERE phone = ?').get(phone);
+      return r && {
+        phone: r.phone, codeHash: r.code_hash, expiresAt: r.expires_at,
+        attempts: r.attempts, sentCount: r.sent_count, windowStart: r.window_start,
+      };
+    },
+
+    saveAuthCode({ phone, codeHash, expiresAt, attempts, sentCount, windowStart }) {
+      db.prepare(
+        `INSERT INTO auth_codes (phone, code_hash, expires_at, attempts, sent_count, window_start)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT(phone) DO UPDATE SET code_hash = excluded.code_hash, expires_at = excluded.expires_at,
+           attempts = excluded.attempts, sent_count = excluded.sent_count, window_start = excluded.window_start`,
+      ).run(phone, codeHash, expiresAt, attempts, sentCount, windowStart);
+    },
+
+    bumpAuthAttempts(phone) {
+      db.prepare('UPDATE auth_codes SET attempts = attempts + 1 WHERE phone = ?').run(phone);
+    },
+
+    deleteAuthCode(phone) {
+      db.prepare('DELETE FROM auth_codes WHERE phone = ?').run(phone);
+    },
+
+    createSession({ tokenHash, userId, expiresAt }) {
+      db.prepare('DELETE FROM auth_sessions WHERE expires_at < ?').run(Date.now());
+      db.prepare('INSERT INTO auth_sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)').run(tokenHash, userId, expiresAt);
+    },
+
+    getSession(tokenHash) {
+      const r = db.prepare('SELECT * FROM auth_sessions WHERE token_hash = ?').get(tokenHash);
+      return r && { tokenHash: r.token_hash, userId: r.user_id, expiresAt: r.expires_at };
+    },
+
+    deleteSession(tokenHash) {
+      db.prepare('DELETE FROM auth_sessions WHERE token_hash = ?').run(tokenHash);
+    },
+
     getUser(id) {
       return mapUser(db.prepare('SELECT * FROM users WHERE id = ?').get(id));
     },
