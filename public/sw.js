@@ -1,8 +1,9 @@
-const CACHE = 'fikaai-agri-v3';
+const CACHE = 'fikaai-agri-v4';
 const FILES = [
   '/',
   '/index.html',
   '/cheatsheet.html',
+  '/privacy.html',
   '/styles.css',
   '/app.js',
   '/manifest.webmanifest',
