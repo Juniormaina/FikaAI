@@ -1,4 +1,4 @@
-const CACHE = 'fikaai-agri-v2';
+const CACHE = 'fikaai-agri-v3';
 const FILES = [
   '/',
   '/index.html',
@@ -7,6 +7,7 @@ const FILES = [
   '/app.js',
   '/manifest.webmanifest',
   '/icon.svg',
+  '/poultry-guide.json',
 ];
 
 self.addEventListener('install', (event) => {

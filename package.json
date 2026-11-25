@@ -13,7 +13,8 @@
     "seed": "node scripts/seed.js",
     "test": "vitest run --pool=threads --maxWorkers=1",
     "smoke:modelscope": "node scripts/smoke-modelscope.js",
-    "eval:qwen": "node scripts/eval-qwen.js"
+    "eval:qwen": "node scripts/eval-qwen.js",
+    "build:poultry": "node scripts/build-poultry-json.js"
   },
   "dependencies": {
     "express": "^4.21.2"
