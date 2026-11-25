@@ -1,3 +1,4 @@
+@charset "UTF-8";
 /*
  * FikaAI — Field Utility & Agronomy Directive
  * Flat, high-contrast, sun-readable. No blur, no diffuse shadows.
@@ -524,3 +525,119 @@ main { padding-bottom: 2rem; }
 .vax-table th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--slate); }
 .vax-table td:first-child { font-family: var(--font-mono); font-weight: 700; color: var(--amber-deep); white-space: nowrap; }
 .poultry-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.25rem; }
+
+/* ---------- Polish pass ---------- */
+
+/* One aligned status strip instead of stacked full-width banners */
+.telemetry { padding-top: 0.75rem; }
+.telemetry .wrap { display: grid; gap: 0.5rem; }
+.telemetry .banner, .telemetry .notice { margin: 0; width: 100%; max-width: none; }
+.telemetry-inner { border-radius: 999px; padding: 0.4rem 0.4rem 0.4rem 1.1rem; font-size: 0.85rem; }
+.telemetry-inner p { margin: 0; }
+.telemetry-inner .sep { color: var(--slate); margin: 0 0.15rem; }
+.telemetry-inner strong { margin-right: 0.35rem; }
+.banner.privacy { padding: 0 0.25rem; background: transparent; border: 0; color: var(--slate); font-size: 0.82rem; }
+.banner.privacy::before { content: "i"; display: inline-grid; place-items: center; width: 1.1rem; height: 1.1rem; margin-right: 0.45rem; border-radius: 50%; background: var(--sage); color: var(--forest); font-weight: 800; font-size: 0.7rem; font-style: italic; }
+
+/* Header */
+.tabs button { display: inline-flex; align-items: center; gap: 0.5rem; transition: background 0.15s, color 0.15s; }
+.tabs .icon { display: none; }
+.header-actions .btn.amber { white-space: nowrap; }
+
+/* Hero */
+.hero-side { display: grid; gap: 1rem; }
+.hero-art { display: none; margin: 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: #E4F5EA; }
+.hero-art svg { display: block; width: 100%; height: auto; aspect-ratio: 480 / 300; }
+.hero-art figcaption { padding: 0.65rem 1rem; background: #fff; border-top: 1px solid var(--line); font-size: 0.85rem; color: var(--slate); }
+@media (min-width: 1024px) { .hero-art { display: block; } }
+
+/* After a search: collapse the hero so results are the first thing you see */
+body[data-view="results"] .hero-copy,
+body[data-view="results"] .hero-side { display: none; }
+body[data-view="results"] .hero { grid-template-columns: 1fr; }
+body[data-view="results"] .view { padding-top: 1.25rem; }
+body[data-view="results"] .cache-pill { display: none; }
+
+/* Result cards: summary first, details on demand */
+.advisory-card { transition: border-color 0.15s; }
+.advisory-card:hover { border-color: var(--forest); }
+details.more { margin-top: 0.9rem; border-top: 1px solid var(--line); }
+details.more > summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+  min-height: 48px; font-weight: 700; color: var(--forest);
+}
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary::after {
+  content: ""; width: 0.6rem; height: 0.6rem; margin-right: 0.25rem;
+  border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg); transition: transform 0.15s;
+}
+details.more[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
+details.more > summary:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; border-radius: 8px; }
+details.more > .confirm-box { margin-top: 0.25rem; }
+
+/* Footer links: one baseline */
+.site-footer .links a, .site-footer .links button {
+  display: inline-flex; align-items: center; min-height: 36px; line-height: 1; font: inherit; font-size: 0.85rem; font-weight: 700;
+}
+
+/* Phones: compact header and a bottom tab bar */
+@media (max-width: 720px) {
+  body { padding-bottom: calc(4.75rem + env(safe-area-inset-bottom)); }
+  .site-header .wrap { flex-wrap: wrap; gap: 0.6rem; padding-top: 0.6rem; padding-bottom: 0.6rem; }
+  .brand img { width: 34px; height: 34px; }
+  .brand-name { font-size: 1.2rem; }
+  .brand-sub, .switch-label { display: none; }
+  .header-actions { flex: 1; justify-content: flex-end; gap: 0.4rem; flex-wrap: nowrap; }
+  .status-pill { padding: 0 0.6rem; min-height: 34px; }
+  .switch button { padding: 0 0.65rem; min-height: 34px; }
+  .header-actions .btn.amber { padding: 0 0.7rem; min-height: 34px; }
+  .qq-label { display: none; }
+
+  .tabs {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.15rem;
+    padding: 0.3rem 0.35rem calc(0.3rem + env(safe-area-inset-bottom));
+    background: #fff; border-top: 1px solid var(--line-strong);
+  }
+  .tabs button {
+    flex-direction: column; justify-content: center; gap: 0.15rem;
+    min-height: 54px; padding: 0.25rem; border-radius: 12px; font-size: 0.72rem; line-height: 1.1; text-align: center;
+  }
+  .tabs .icon { display: block; width: 1.35rem; height: 1.35rem; }
+  .tabs button[aria-selected="true"] { background: var(--sage); color: var(--forest); }
+
+  .telemetry-inner { border-radius: 14px; padding: 0.55rem 0.8rem; }
+  .hero h1 { font-size: 2.1rem; }
+  .lede { font-size: 1rem; }
+}
+
+.stats .stat-num { font-size: 2.75rem; color: var(--forest); margin: 0; }
+.stats .stat-num.amber { color: var(--amber-deep); }
+#intent-panel, #results-layout { scroll-margin-top: 0.75rem; }
+@media (max-width: 720px) { .telemetry-inner .sep { display: none; } .telemetry-inner .dial { white-space: nowrap; } }
+
+/* Sticky footer so short pages don't leave a hole under it */
+body { min-height: 100vh; display: flex; flex-direction: column; }
+body > main { flex: 1; }
+body > .site-footer { margin-top: 2rem; }
+
+/* Empty states */
+.empty-state { display: grid; justify-items: start; gap: 0.25rem; padding: 2rem; }
+.empty-state .icon-badge {
+  width: 3rem; height: 3rem; border-radius: 50%; display: grid; place-items: center;
+  background: var(--sage); color: var(--forest); margin-bottom: 0.5rem;
+}
+.empty-state .icon-badge .icon { width: 1.4rem; height: 1.4rem; }
+.empty-state h2 { margin: 0; }
+.empty-state p { margin: 0; color: var(--slate); max-width: 52ch; }
+.sms-log:empty::before {
+  content: "Messages appear here. Try “Maize yellowing” or “Wadudu”.";
+  display: grid; place-items: center; text-align: center; min-height: 12rem; padding: 1rem;
+  color: var(--slate); border: 1px dashed var(--line-strong); border-radius: var(--radius);
+}
+
+/* Quick-dial: code row sits on the same line in every card */
+.quickdial .card { display: flex; flex-direction: column; align-items: flex-start; }
+.quickdial .card .code { margin-top: auto; align-self: stretch; }
+.quickdial .card .meta { margin-bottom: 0.75rem; }

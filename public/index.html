@@ -27,6 +27,7 @@
         <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3h10v6"/><rect x="4" y="9" width="16" height="8" rx="2"/><path d="M7 14h10v7H7z"/></symbol>
         <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></symbol>
         <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="m11 6-6 6 6 6"/></symbol>
+        <symbol id="i-egg" viewBox="0 0 24 24"><path d="M12 3c3.5 0 6 5.5 6 9.5a6 6 0 0 1-12 0C6 8.5 8.5 3 12 3z"/><path d="M9.5 13.5c.3 1.4 1.3 2.3 2.5 2.5"/></symbol>
         <symbol id="i-clipboard" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9z"/><path d="m9 13 2 2 4-4"/></symbol>
       </defs>
     </svg>
@@ -44,10 +45,10 @@
         </a>
 
         <nav class="tabs" role="tablist" aria-label="Sections">
-          <button type="button" data-tab="guidance" role="tab" aria-selected="true">Find guidance</button>
-          <button type="button" data-tab="poultry" role="tab" aria-selected="false">Poultry</button>
-          <button type="button" data-tab="plan" role="tab" aria-selected="false">Farm plan</button>
-          <button type="button" data-tab="channels" role="tab" aria-selected="false">SMS / USSD</button>
+          <button type="button" data-tab="guidance" role="tab" aria-selected="true"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><span>Find guidance</span></button>
+          <button type="button" data-tab="poultry" role="tab" aria-selected="false"><svg class="icon" aria-hidden="true"><use href="#i-egg"/></svg><span>Poultry</span></button>
+          <button type="button" data-tab="plan" role="tab" aria-selected="false"><svg class="icon" aria-hidden="true"><use href="#i-clipboard"/></svg><span>Farm plan</span></button>
+          <button type="button" data-tab="channels" role="tab" aria-selected="false"><svg class="icon" aria-hidden="true"><use href="#i-message"/></svg><span>SMS / USSD</span></button>
         </nav>
 
         <div class="header-actions">
@@ -64,7 +65,7 @@
             </div>
           </div>
           <button type="button" class="btn amber small" id="btn-quick-query" title="Open the USSD demo">
-            Quick Query <span class="mono">*384*40#</span>
+            <span class="qq-label">Quick Query</span> <span class="mono">*384*40#</span>
           </button>
         </div>
       </div>
@@ -74,22 +75,21 @@
       <div class="wrap">
         <div class="telemetry-inner">
           <p>
-            <strong>Field status:</strong>
+            <strong>Field status</strong>
             <span id="telemetry-cache">Checking local cache…</span>
-            · USSD demo code <span class="dial">*384*40#</span>
+            <span class="sep">·</span> USSD demo code <span class="dial">*384*40#</span>
           </p>
           <span class="pill plain" id="telemetry-sync">No plan saved yet</span>
         </div>
+        <p id="privacy-banner" class="banner privacy">
+          Prototype with synthetic agri data. It does not replace a certified agronomist or veterinary inspection.
+        </p>
+        <p id="offline-banner" class="banner offline" hidden>
+          You're offline. Your saved farm plan is still available on this device.
+        </p>
+        <p id="notice" class="notice" role="status" hidden></p>
       </div>
     </section>
-
-    <p id="privacy-banner" class="banner privacy">
-      FikaAI's prototype uses synthetic agri data. It does not replace a certified agronomist or veterinary inspection.
-    </p>
-    <p id="offline-banner" class="banner offline" hidden>
-      You're offline. Your saved farm plan is still available on this device.
-    </p>
-    <p id="notice" class="notice" role="status" hidden></p>
 
     <main id="main">
       <!-- ============ GUIDANCE ============ -->
@@ -98,12 +98,14 @@
           <div id="view-search" class="view">
             <div class="hero">
               <div>
-                <span class="pill"><span class="dot"></span> Demo · Synthetic agri data</span>
-                <h1>Farming guidance that works when signal doesn't.</h1>
-                <p class="lede">
-                  Instant agronomy guidance for smallholders, extension officers, and cooperatives.
-                  Look up crop and livestock problems, save a field plan, and keep it on your phone — or reach it by SMS and USSD.
-                </p>
+                <div class="hero-copy">
+                  <span class="pill"><span class="dot"></span> Demo · Synthetic agri data</span>
+                  <h1>Farming guidance that works when signal doesn't.</h1>
+                  <p class="lede">
+                    Instant agronomy guidance for smallholders, extension officers, and cooperatives.
+                    Look up crop and livestock problems, save a field plan, and keep it on your phone — or reach it by SMS and USSD.
+                  </p>
+                </div>
 
                 <div class="search-card">
                   <label for="guidance-input">Ask any crop or livestock question</label>
@@ -138,7 +140,47 @@
                 </p>
               </div>
 
-              <aside id="home-plan" class="card accent plan-preview" aria-live="polite"></aside>
+              <div class="hero-side">
+                <figure class="hero-art" aria-hidden="true">
+                  <svg viewBox="0 0 480 300" role="presentation" preserveAspectRatio="xMidYMid slice">
+                    <rect width="480" height="300" fill="#E4F5EA"/>
+                    <circle cx="372" cy="78" r="34" fill="#E9B46B"/>
+                    <g fill="none" stroke="#144532" stroke-linecap="round" stroke-width="5" opacity="0.28">
+                      <path d="M64 64c18-20 40-30 64-30s46 10 64 30"/>
+                      <path d="M88 82c11-12 25-18 40-18s29 6 40 18"/>
+                      <path d="M110 98c6-6 12-9 18-9s12 3 18 9"/>
+                    </g>
+                    <path d="M0 176c80-36 150-40 230-14 80 26 170 20 250-18V300H0z" fill="#9FD1B8"/>
+                    <path d="M0 214c90-30 170-28 250-4 80 24 160 16 230-10V300H0z" fill="#5FA886"/>
+                    <path d="M0 252c100-24 190-18 270 2 70 17 150 10 210-8V300H0z" fill="#1F6A4B"/>
+                    <g stroke="#144532" stroke-width="3" stroke-linecap="round" opacity="0.55">
+                      <path d="M20 292c70-18 140-20 210-6M20 278c70-16 140-17 210-4M250 288c80-12 150-8 210 8M250 274c80-12 150-8 210 8"/>
+                    </g>
+                    <g fill="#144532">
+                      <path d="M92 252c0-18 9-28 24-28 0 18-9 28-24 28z"/>
+                      <path d="M92 262c0-14-8-22-20-22 0 14 8 22 20 22z" fill="#2C8A60"/>
+                      <path d="M176 258c0-18 9-28 24-28 0 18-9 28-24 28z"/>
+                      <path d="M176 268c0-14-8-22-20-22 0 14 8 22 20 22z" fill="#2C8A60"/>
+                      <path d="M360 256c0-18 9-28 24-28 0 18-9 28-24 28z"/>
+                      <path d="M360 266c0-14-8-22-20-22 0 14 8 22 20 22z" fill="#2C8A60"/>
+                    </g>
+                    <g transform="translate(262 96)">
+                      <rect width="84" height="150" rx="16" fill="#18201C"/>
+                      <rect x="6" y="14" width="72" height="116" rx="8" fill="#F3FCF5"/>
+                      <rect x="14" y="24" width="56" height="9" rx="4.5" fill="#144532"/>
+                      <rect x="14" y="40" width="44" height="6" rx="3" fill="#9FD1B8"/>
+                      <rect x="14" y="52" width="56" height="26" rx="6" fill="#FFF1DE"/>
+                      <text x="42" y="70" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="700" fill="#8A5314">*384*40#</text>
+                      <rect x="14" y="86" width="56" height="6" rx="3" fill="#C8DFCF"/>
+                      <rect x="14" y="98" width="40" height="6" rx="3" fill="#C8DFCF"/>
+                      <rect x="14" y="110" width="30" height="6" rx="3" fill="#C8DFCF"/>
+                      <rect x="30" y="138" width="24" height="4" rx="2" fill="#5C675E"/>
+                    </g>
+                  </svg>
+                  <figcaption>Works on a basic phone, with or without data.</figcaption>
+                </figure>
+                <aside id="home-plan" class="card accent plan-preview" aria-live="polite"></aside>
+              </div>
             </div>
 
             <div id="intent-panel" class="intent-panel" hidden></div>
@@ -213,7 +255,8 @@
       <section id="panel-plan" data-panel="plan" hidden>
         <div class="wrap">
           <div class="view">
-            <div id="plan-empty" class="card empty-card">
+            <div id="plan-empty" class="card empty-card empty-state">
+              <div class="icon-badge"><svg class="icon" aria-hidden="true"><use href="#i-clipboard"/></svg></div>
               <h2>No farm plan yet</h2>
               <p>Search for guidance and choose <strong>Save to farm plan</strong> to keep the steps on this device.</p>
               <button type="button" class="btn primary" id="btn-go-search" style="margin-top:1rem">Find guidance</button>
