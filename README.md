@@ -186,6 +186,12 @@ See `.env.example`. Never commit real secrets.
 | `LLM_PROVIDER` | `auto` | `auto` \| `ollama` \| `modelscope` \| `mock` |
 | `DEFAULT_USER_ID` | `demo-user` | Local demo user |
 | `CONNECTIVITY_MODE` | `online` | Demo backend online/offline start mode |
+| `AUTH_REQUIRED` | `false` | `true` makes every user API call need a signed-in session (set this in production) |
+| `AUTH_DEMO_CODES` | `false` | `true` returns the SMS code in the API response — local demos only, never in production |
+| `AT_USERNAME`, `AT_API_KEY` | _(empty)_ | Africa's Talking SMS credentials; without them codes are printed to the server log |
+| `AT_SENDER_ID`, `AT_SANDBOX` | _(empty)_, `false` | Optional sender ID and sandbox switch |
+
+Sign-in is phone number + 6-digit SMS code (10-minute expiry, 3 codes per 15 minutes, 5 attempts), with 30-day sessions stored as hashes. The Africa's Talking sender is written to the provider's documented API but has not been run against a live account. Sign-in needs the Node backend; the static Vercel build has no API and runs in local mode.
 
 ### Testing
 
@@ -193,7 +199,7 @@ See `.env.example`. Never commit real secrets.
 npm test
 ```
 
-65 tests across agent, channels, offline queue, data, LLM provider, e2e and guidance suites.
+76 tests across agent, channels, offline queue, data, LLM provider, e2e and guidance suites.
 
 Guidance coverage includes intent fallback, malformed AI rejection, hazard safety, advisory ranking, plan create, pending action, sync, feedback and offline-backend search fallback.
 
