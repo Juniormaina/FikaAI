@@ -135,4 +135,14 @@ describe('channels share one agent', () => {
       }
     }
   });
+
+  it('serves the poultry guide in Kiswahili', async () => {
+    await ctx.channels.web.handleTurn('buyer', 'kiswahili');
+    const stages = await ctx.channels.ussd.handleTurn('buyer', '*384*40*5#');
+    expect(stages.display).toContain('MWONGOZO WA KUKU');
+    await ctx.channels.ussd.handleTurn('buyer', '2');
+    const vaccines = await ctx.channels.ussd.handleTurn('buyer', '3');
+    expect(vaccines.display).toContain('Newcastle');
+    expect(vaccines.display).toContain('0. Rudi');
+  });
 });
