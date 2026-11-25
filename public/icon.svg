@@ -1,4 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="FikaAI">
-  <rect width="64" height="64" rx="14" fill="#0b5f5c"/>
-  <text x="32" y="42" text-anchor="middle" font-family="Georgia, serif" font-size="32" fill="#e8f2f0">F</text>
+  <rect width="64" height="64" rx="18" fill="#144532"/>
+  <!-- signal arcs: guidance that keeps arriving at the edge of coverage -->
+  <path d="M14 22c5-6 11-9 18-9s13 3 18 9" stroke="#BBEED3" stroke-width="3.5" stroke-linecap="round" fill="none" opacity="0.55"/>
+  <path d="M20 27c3.4-3.8 7.4-5.6 12-5.6s8.6 1.8 12 5.6" stroke="#BBEED3" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  <!-- stem -->
+  <path d="M32 52V34" stroke="#F3FCF5" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <!-- leaves -->
+  <path d="M32 40c0-9 6-14 15-14 0 9-6 14-15 14z" fill="#C87D28"/>
+  <path d="M32 46c0-7-5-11-13-11 0 7 5 11 13 11z" fill="#9FD1B8"/>
 </svg>

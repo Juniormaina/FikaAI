@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#144532" />
+    <title>FikaAI — Printable dial sheet</title>
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="stylesheet" href="/styles.css" />
+    <style>
+      .sheet-bar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; justify-content: space-between; padding: 1rem 0; }
+      .sheet-bar .crumbs { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; color: var(--slate); font-size: 0.95rem; }
+      .sheet-bar .crumbs a { color: var(--forest); font-weight: 700; }
+      .lang-switch { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; background: var(--card); padding: 0.2rem; gap: 0.2rem; }
+      .lang-switch button { min-height: 40px; padding: 0 1rem; border: 0; border-radius: 999px; background: transparent; font: inherit; font-weight: 700; color: var(--ink); cursor: pointer; }
+      .lang-switch button[aria-pressed="true"] { background: var(--forest); color: #fff; }
+      .sun-note { background: var(--amber-soft); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 0.6rem 0; font-size: 0.92rem; }
+
+      .placard { background: var(--card); border: 2px solid var(--ink); border-radius: 1.5rem; padding: 1.5rem; margin: 1.5rem 0; box-shadow: 4px 4px 0 var(--ink); }
+      .placard-head { background: var(--forest); color: #fff; border-radius: 1rem; padding: 1.25rem 1.5rem; }
+      .placard-head h1 { color: #fff; margin: 0.4rem 0 0.1rem; font-size: clamp(1.6rem, 4vw, 2.4rem); }
+      .placard-head p { margin: 0; color: #dff3e8; }
+      .placard-head .free { margin-top: 1rem; background: var(--amber-deep); border-radius: 0.75rem; padding: 0.7rem 1rem; font-weight: 700; }
+      .placard-head .sub { color: #bbeed3 !important; font-size: 0.6em; font-weight: 600; display: block; }
+      .placard-head p .sub, .placard-head .free .sub { font-size: 1em; color: #ffe9cf !important; }
+      .demo-stamp { display: inline-block; background: var(--amber-soft); color: var(--amber-deep); border-radius: 999px; padding: 0.15rem 0.7rem; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
+
+      .ways { display: grid; gap: 1rem; margin: 1.25rem 0; grid-template-columns: 1fr; }
+      @media (min-width: 760px) { .ways { grid-template-columns: 1fr 1fr; } }
+      .way { background: var(--container-low); border: 1px solid var(--line); border-radius: 1rem; padding: 1.1rem; }
+      .way h2 { font-size: 1.1rem; margin: 0 0 0.6rem; }
+      .bigcode { font-family: var(--font-mono); font-size: clamp(1.8rem, 5vw, 2.6rem); font-weight: 800; color: var(--amber-deep); margin: 0.2rem 0 0.6rem; }
+      .steps { display: grid; gap: 0.5rem; padding: 0; margin: 0; list-style: none; counter-reset: s; }
+      .steps li { counter-increment: s; display: flex; gap: 0.6rem; align-items: flex-start; }
+      .steps li::before { content: counter(s); flex: none; width: 1.7rem; height: 1.7rem; border-radius: 50%; background: var(--forest); color: #fff; font-weight: 800; display: grid; place-items: center; font-size: 0.9rem; }
+
+      .codes { display: grid; gap: 1rem; grid-template-columns: 1fr; margin: 0.75rem 0 1.25rem; }
+      @media (min-width: 760px) { .codes { grid-template-columns: repeat(2, 1fr); } }
+      .code-card { background: var(--container-low); border: 1px solid var(--line); border-left: 4px solid var(--forest); border-radius: 1rem; padding: 1rem 1.1rem; }
+      .code-card.amber { border-left-color: var(--amber); }
+      .code-card .c { font-family: var(--font-mono); font-weight: 800; font-size: 1.25rem; color: var(--amber-deep); }
+      .code-card h3 { margin: 0.2rem 0; font-size: 1.05rem; }
+      .code-card p { margin: 0; color: var(--slate); }
+
+      .dose { background: var(--container); border-radius: 1rem; padding: 1.1rem; }
+      .dose-grid { display: grid; gap: 1rem; grid-template-columns: 1fr; margin-top: 0.75rem; }
+      @media (min-width: 760px) { .dose-grid { grid-template-columns: repeat(3, 1fr); } }
+      .dose-card { background: var(--card); border: 1px solid var(--line); border-radius: 1rem; padding: 1rem; }
+      .dose-card .n { font-family: var(--font-display); font-weight: 800; font-size: 2rem; color: var(--forest); line-height: 1.1; margin: 0.3rem 0; }
+      .dose-card .warn { margin-top: 0.6rem; background: var(--amber-soft); color: var(--amber-deep); border-radius: 0.6rem; padding: 0.45rem 0.7rem; font-weight: 700; font-size: 0.9rem; }
+
+      .foot { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; align-items: center; border: 1px dashed var(--slate); border-radius: 1rem; padding: 1rem; margin-top: 1.25rem; }
+      .stamp-box { width: 8.5rem; height: 5rem; border: 2px dashed var(--slate); border-radius: 0.75rem; display: grid; place-items: center; text-align: center; font-size: 0.78rem; color: var(--slate); }
+      .tip { color: var(--slate); font-size: 0.92rem; }
+
+      /* Language filter: show/hide by data-lang on <body> */
+      body[data-lang="en"] [lang="sw"],
+      body[data-lang="sw"] [lang="en"] { display: none !important; }
+      body[data-lang="bi"] [lang="sw"] { display: block; }
+      [lang="sw"].inline, [lang="en"].inline { display: inline; }
+      body[data-lang="bi"] [lang="en"].sub { color: var(--slate); font-weight: 600; }
+
+      @media print {
+        .no-print, .site-header, .site-footer, .sun-note { display: none !important; }
+        body { background: #fff; }
+        .placard { box-shadow: none; margin: 0; border-width: 2px; break-inside: avoid; }
+        @page { size: A4; margin: 10mm; }
+      }
+    </style>
+  </head>
+  <body data-lang="bi">
+    <div class="wrap no-print">
+      <div class="sheet-bar">
+        <div class="crumbs">
+          <a href="/">← FikaAI</a><span>/</span><span>Printable dial sheet</span>
+          <span class="pill plain">Demo content</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:center">
+          <div class="lang-switch" role="group" aria-label="Language">
+            <button type="button" data-set-lang="bi" aria-pressed="true">Bilingual</button>
+            <button type="button" data-set-lang="sw" aria-pressed="false">Kiswahili</button>
+            <button type="button" data-set-lang="en" aria-pressed="false">English</button>
+          </div>
+          <button type="button" class="btn primary" id="btn-print">Print sheet</button>
+        </div>
+      </div>
+    </div>
+    <div class="sun-note no-print">
+      <div class="wrap">High-contrast layout for sun-lit agrovet counters and noticeboards. Print on heavy paper (180–250 gsm) and laminate.</div>
+    </div>
+
+    <main class="wrap">
+      <article class="placard" aria-label="FikaAI dial sheet">
+        <header class="placard-head">
+          <span class="demo-stamp">Demo · synthetic data</span>
+          <h1>
+            <span lang="sw">Mwongozo wa Simu wa FikaAI</span>
+            <span lang="en" class="sub">FikaAI phone guide</span>
+          </h1>
+          <p>
+            <span lang="sw">Ushauri wa kilimo kwa simu yoyote ya kawaida.</span>
+            <span lang="en" class="sub">Farming guidance on any basic phone.</span>
+          </p>
+          <div class="free">
+            <span lang="sw">Hakuna data inayohitajika. Misimbo hii ni ya majaribio, si huduma halisi.</span>
+            <span lang="en" class="sub">No mobile data needed. These codes are demo codes, not live services.</span>
+          </div>
+        </header>
+
+        <section class="ways">
+          <div class="way">
+            <h2>
+              <span lang="sw" class="inline">Njia ya kwanza: USSD</span>
+              <span lang="en" class="inline sub"> · Way 1: USSD</span>
+            </h2>
+            <div class="bigcode">*384*40#</div>
+            <ol class="steps">
+              <li><span><span lang="sw">Piga nambari hii.</span> <span lang="en" class="sub">Dial the code.</span></span></li>
+              <li><span><span lang="sw">Chagua nambari ya huduma.</span> <span lang="en" class="sub">Pick a menu number.</span></span></li>
+              <li><span><span lang="sw">Soma ushauri kwenye skrini.</span> <span lang="en" class="sub">Read the guidance on screen.</span></span></li>
+            </ol>
+          </div>
+          <div class="way">
+            <h2>
+              <span lang="sw" class="inline">Njia ya pili: SMS</span>
+              <span lang="en" class="inline sub"> · Way 2: SMS</span>
+            </h2>
+            <p>
+              <span lang="sw">Andika tatizo lako kwa Kiswahili au Kiingereza, mfano:</span>
+              <span lang="en" class="sub">Write your problem in Kiswahili or English, for example:</span>
+            </p>
+            <p style="background:#fff;border:1px solid var(--line);border-radius:0.75rem;padding:0.7rem 0.9rem;margin:0">
+              “Mahindi yangu yana wadudu, Kiambu.”<br />
+              “Maize leaf yellowing in Kiambu.”
+            </p>
+          </div>
+        </section>
+
+        <section aria-labelledby="codes-h">
+          <h2 id="codes-h" style="margin:0">
+            <span lang="sw" class="inline">Misimbo ya moja kwa moja</span>
+            <span lang="en" class="inline sub"> · Quick-dial codes</span>
+          </h2>
+          <div class="codes">
+            <div class="code-card amber">
+              <div class="c">*384*40*1#</div>
+              <h3><span lang="sw">Tatizo la mazao au mifugo</span> <span lang="en" class="sub">Crop or animal problem</span></h3>
+              <p><span lang="sw">Eleza dalili upate ushauri.</span> <span lang="en" class="sub">Describe a symptom and get guidance.</span></p>
+            </div>
+            <div class="code-card">
+              <div class="c">*384*40*2#</div>
+              <h3><span lang="sw">Rekodi mauzo</span> <span lang="en" class="sub">Record a sale</span></h3>
+              <p><span lang="sw">Mfano: MAIZE 4500.</span> <span lang="en" class="sub">For example: MAIZE 4500.</span></p>
+            </div>
+            <div class="code-card">
+              <div class="c">*384*40*3#</div>
+              <h3><span lang="sw">Angalia mauzo</span> <span lang="en" class="sub">View sales</span></h3>
+              <p><span lang="sw">Soma ulichorekodi leo.</span> <span lang="en" class="sub">Read back what you recorded today.</span></p>
+            </div>
+            <div class="code-card">
+              <div class="c">*384*40*4#</div>
+              <h3><span lang="sw">Msaada</span> <span lang="en" class="sub">Help</span></h3>
+              <p><span lang="sw">Jinsi ya kuandika na lugha zinazofaa.</span> <span lang="en" class="sub">What to type and which languages work.</span></p>
+            </div>
+          </div>
+        </section>
+
+        <section class="dose" aria-labelledby="dose-h">
+          <span class="demo-stamp">Demo values</span>
+          <h2 id="dose-h" style="margin:0.4rem 0 0">
+            <span lang="sw" class="inline">Vipimo vya shambani</span>
+            <span lang="en" class="inline sub"> · Field measures</span>
+          </h2>
+          <p class="tip" style="margin:0.3rem 0 0">
+            <span lang="sw">Hizi ni mifano ya majaribio. Thibitisha kiasi na afisa wa ugani au agrovet kabla ya kutumia.</span>
+            <span lang="en" class="sub">Demo examples only. Confirm product and rate with your extension officer or agrovet before use.</span>
+          </p>
+          <div class="dose-grid">
+            <div class="dose-card">
+              <strong><span lang="sw">Mbolea ya kukuzia (CAN)</span> <span lang="en" class="sub">Top-dressing (CAN)</span></strong>
+              <div class="n">50 g</div>
+              <p><span lang="sw">Kibiriti kimoja kilichojaa kwa miche 2.</span> <span lang="en" class="sub">One level matchbox per 2 plants.</span></p>
+              <div class="warn"><span lang="sw">Usiguse shina wala moyo wa mmea.</span> <span lang="en" class="sub">Keep granules off the stem and whorl.</span></div>
+            </div>
+            <div class="dose-card">
+              <strong><span lang="sw">Dawa ya kuvu</span> <span lang="en" class="sub">Fungicide</span></strong>
+              <div class="n">10–20 g</div>
+              <p><span lang="sw">Kwa lita 20 za maji (pampu ya knapsack).</span> <span lang="en" class="sub">Per 20 L of water (knapsack).</span></p>
+              <div class="warn"><span lang="sw">Vaa barakoa na glavu.</span> <span lang="en" class="sub">Wear a mask and gloves.</span></div>
+            </div>
+            <div class="dose-card">
+              <strong><span lang="sw">Nafasi ya mahindi</span> <span lang="en" class="sub">Maize spacing</span></strong>
+              <div class="n">75 × 25 cm</div>
+              <p><span lang="sw">Mstari hadi mstari 75 cm, mche hadi mche 25 cm.</span> <span lang="en" class="sub">75 cm between rows, 25 cm between plants.</span></p>
+              <div class="warn"><span lang="sw">Mbegu 1 kwa shimo.</span> <span lang="en" class="sub">1 seed per hole.</span></div>
+            </div>
+          </div>
+        </section>
+
+        <footer class="foot">
+          <div class="stamp-box"><span>Agrovet stamp<br />Mhuri wa agrovet</span></div>
+          <div style="flex:1;min-width:14rem">
+            <strong><span lang="sw">Dharura ya mimea au mifugo?</span> <span lang="en" class="sub">Emergency with a crop or animal?</span></strong>
+            <p style="margin:0.2rem 0 0" class="tip">
+              <span lang="sw">Wasiliana na afisa wa ugani wa wadi yako au daktari wa mifugo mara moja.</span>
+              <span lang="en" class="sub">Contact your ward extension officer or a vet straight away.</span>
+            </p>
+          </div>
+        </footer>
+        <p class="tip" style="margin:1rem 0 0">
+          FikaAI is a decision-support prototype using synthetic data. Not a replacement for a certified agronomist or veterinary inspection.
+        </p>
+      </article>
+    </main>
+
+    <script>
+      (function () {
+        var buttons = document.querySelectorAll('[data-set-lang]');
+        function setLang(lang) {
+          document.body.setAttribute('data-lang', lang);
+          document.documentElement.lang = lang === 'sw' ? 'sw' : 'en';
+          buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-set-lang') === lang)); });
+        }
+        buttons.forEach(function (b) { b.addEventListener('click', function () { setLang(b.getAttribute('data-set-lang')); }); });
+        document.getElementById('btn-print').addEventListener('click', function () { window.print(); });
+      })();
+    </script>
+  </body>
+</html>

@@ -1,41 +1,58 @@
 # FikaAI
 
-## Healthcare access that works when connectivity doesn't.
+## Farming guidance that works when signal doesn't.
 
-A care-navigation prototype that helps people discover relevant healthcare provider options and keep their journey available when connectivity is unreliable.
+An offline-first farm-advisory prototype. It helps smallholders, extension officers and cooperatives look up crop and livestock problems, save a field plan on the phone, and reach the same guidance by SMS or USSD on a basic handset.
 
-This is **not** a medical diagnosis system, a replacement for doctors, a live national healthcare network, or a clinical decision tool.
+This is **not** a replacement for a certified agronomist or veterinarian, a live national advisory service, or a source of verified dosage and product recommendations.
 
 ### Problem
 
-People often need specialist care but cannot assume continuous connectivity. Travelling across a city only to learn that a referral is required — or that a facility cannot help that day — wastes time, money, and trust. Care-navigation information is also easy to lose when the network drops mid-journey.
+Farm problems do not wait for good coverage. A farmer or extension officer may be in a remote plot when a pest, nutrient or disease question comes up. Guidance that needs a live connection, or that disappears when the network drops mid-task, is not much use in the field. See [`PROBLEM.md`](PROBLEM.md).
 
 ### Solution
 
 FikaAI helps a user:
 
-* express a healthcare need in natural language
-* discover relevant provider options from a local synthetic directory
-* understand facility requirements (appointment / referral)
-* save a lightweight healthcare journey
-* continue reviewing that journey when connectivity disappears
-* synchronize pending actions when connectivity returns
-* leave simple feedback
+* describe a crop or livestock problem in plain English or Kiswahili
+* get ranked advisory pathways from a local synthetic advisory library, with field checks to confirm before acting
+* see urgency, cautions and a reminder to confirm rates with an extension officer or agrovet
+* save a field plan with a step checklist and keep it on the device
+* tick steps and log observations with no signal, then sync when the connection returns
+* reach the same guidance by SMS or USSD on a feature phone
+* print a bilingual dial sheet for agrovet counters and noticeboards
 
 ### MVP
 
-Features actually implemented in this repository:
+Features implemented in this repository:
 
-* Natural-language care search with structured AI intent extraction
-* Deterministic provider search over synthetic SQLite provider records
-* Facility detail (specialist, availability note, appointment/referral flags, last-updated timestamp, demo-data badge)
-* Healthcare journey creation and persistence
-* Offline continuity via service worker shell cache + IndexedDB journey cache
+* Natural-language guidance search with structured intent extraction (crop, region, symptom, category)
+* Deterministic ranking over a synthetic advisory library (10 demo advisories: nutrient, pest, disease, water, planting, livestock)
+* Advisory detail with field checks, remediation, caution, demo-data badge and last-updated label
+* Farm plan creation and persistence, with step progress and field observations
+* Offline continuity via service worker shell cache and IndexedDB plan cache
 * Browser online/offline detection and reconnect sync (`pending` → `syncing` → `synced` / `failed`)
-* Simple feedback capture (`yes` / `partly` / `no`)
-* Emergency-language safety message (no diagnosis)
+* Simple feedback capture
+* Hazard safety layer for pesticide poisoning and sudden animal death (redirects to medical, veterinary or extension help; no diagnosis)
 * AI failure fallback via deterministic keyword intent mapping
-* SMS / USSD simulators retained as secondary channels
+* SMS and USSD simulators (`*384*40#`, demo codes) in English and Kiswahili, including sale recording
+* Printable bilingual dial sheet at `/cheatsheet.html`
+
+### Design
+
+The interface follows the **Field Utility & Agronomy Directive** design system: flat, high-contrast and readable in direct sun.
+
+| Token | Value |
+| --- | --- |
+| Harvest Amber (alerts, focus) | `#C87D28` |
+| Deep Botanical Forest (primary actions) | `#144532` |
+| Earth Slate (secondary text) | `#5C675E` |
+| Charcoal Ink (text) | `#18201C` |
+| Canvas / cards / borders | `#F3FCF5` / `#FFFFFF` / `#E2DDD2` |
+| Headlines | Bricolage Grotesque |
+| Body and data | Atkinson Hyperlegible Next |
+
+No blur, glass or diffuse shadows. Depth comes from tone and 1px borders. Interactive targets are at least 48px.
 
 ### How AI Is Used
 
@@ -43,57 +60,59 @@ Features actually implemented in this repository:
 | --- | --- |
 | Hosted model | ModelScope OpenAI-compatible API — configurable Qwen 3.x (default `Qwen-Ambassador/Qwen3.7-Max`) |
 | Local model | Ollama `qwen2.5:3b` (optional) |
-| Fallback | Deterministic specialty/location keyword mapping + mock last resort |
+| Fallback | Deterministic crop/symptom keyword mapping + mock last resort |
 | Selection | `LLM_PROVIDER=auto\|ollama\|modelscope\|mock` |
 
 Flow:
 
-1. User enters a natural-language request
+1. User enters a natural-language question
 2. AI (when available) returns structured intent JSON
 3. Intent is validated before use
-4. Application runs a deterministic SQL/provider-directory query
-5. Results shown to the user come from stored provider records
+4. The application ranks stored advisories deterministically
+5. Results shown to the user come from the stored advisory library
 
-> AI is used for intent understanding, not autonomous medical diagnosis or generation of provider availability.
+> AI is used for intent understanding, not for diagnosis or for inventing advice.
 
-AI does **not** invent hospitals, doctors, availability, medicines, or diagnoses.
+AI does **not** invent advisories, product names, application rates, or diagnoses.
 
 ### Offline Architecture
 
-* **Service worker** caches the PWA shell (`index.html`, CSS, JS, manifest, icon)
-* **IndexedDB** stores the active journey, provider snapshot, pending actions, and recent search cache
-* **Offline mode** shows a clear Offline status and keeps the saved journey readable
-* **Pending actions** (for example an offline note) are stored locally and marked `pending`
-* **Reconnect** listens for the browser `online` event, shows synchronizing state, then marks `synced` (or `failed` with retry)
-* Backend demo connectivity toggle remains available for secondary channel/API demos
+* **Service worker** caches the PWA shell (`index.html`, `cheatsheet.html`, CSS, JS, manifest, icon)
+* **IndexedDB** stores the active farm plan, advisory snapshot, pending actions and recent search cache
+* **Offline mode** shows a clear Offline status and keeps the saved plan readable and tickable
+* **Pending actions** (for example a field observation) are stored locally and marked `pending`
+* **Reconnect** listens for the browser `online` event, shows the synchronizing state, then marks `synced` (or `failed` with retry)
+* The backend demo connectivity toggle remains available for SMS/USSD and API demos
 
 ### Data
 
-> The provider records used in this prototype are synthetic demonstration data. They do not represent verified live hospital availability.
+> The advisories in this prototype are synthetic demonstration data. They are not verified agronomic or veterinary advice. Product names, rates and thresholds must be confirmed with a certified extension officer, agrovet or vet.
 
-Each record includes a demo-data indicator and a last-updated label (`27 Sep 2026, 09:30 EAT`).
+Each record carries a demo-data indicator and a last-updated label. Contact numbers and short codes shown in the app and on the dial sheet are demo placeholders, not live services.
 
 ### Responsible AI
 
-* No autonomous diagnosis
-* Emergency language triggers a redirect-to-care message, not a clinical assessment
-* Provider records are the source of truth for facility facts
-* Synthetic provider data is clearly labeled
-* Minimal data collection — do not enter sensitive medical information
-* Offline journey state remains on-device until sync
-* Documented limitations: prototype scope, synthetic directory, optional AI providers
+* No diagnosis
+* Poisoning and sudden-animal-death language triggers a redirect to medical, veterinary or extension help
+* The stored advisory library is the source of truth for guidance content
+* Synthetic data is clearly labelled everywhere it appears
+* Minimal data collection
+* Offline plan state stays on the device until sync
+* Documented limitations: prototype scope, synthetic library, optional AI providers
 
 ### Architecture
 
 ```mermaid
 flowchart TD
   User --> PWA[FikaAI PWA]
+  User --> Phone[SMS / USSD]
   PWA --> Intent[AI Intent Layer]
+  Phone --> Intent
   Intent --> Validated[Validated Structured Intent]
-  Validated --> Search[Provider Search API]
-  Search --> DB[(SQLite Synthetic Providers)]
-  DB --> Journey[Healthcare Journey]
-  Journey --> IDB[(IndexedDB Offline Cache)]
+  Validated --> Search[Guidance Search API]
+  Search --> DB[(SQLite Synthetic Advisories)]
+  DB --> Plan[Farm Plan]
+  Plan --> IDB[(IndexedDB Offline Cache)]
   IDB <--> Sync[Synchronization]
 ```
 
@@ -109,7 +128,7 @@ flowchart TD
 | AI (local) | Ollama · `qwen2.5:3b` |
 | AI (fallback) | Deterministic keyword intent mapping · mock LLM |
 | Offline / PWA | Service worker · Web App Manifest · IndexedDB |
-| Sync | Browser `online`/`offline` events · journey action queue |
+| Sync | Browser `online`/`offline` events · plan action queue |
 | Secondary channels | SMS simulator · USSD simulator |
 | Tests | Vitest |
 | Package manager | npm |
@@ -171,24 +190,24 @@ See `.env.example`. Never commit real secrets.
 npm test
 ```
 
-Latest run in this repository: **40 passed / 40 total** across agent, channels, offline queue, data, LLM provider, e2e, and healthcare suites.
+54 tests across agent, channels, offline queue, data, LLM provider, e2e and guidance suites.
 
-Healthcare coverage includes intent fallback, malformed AI rejection, emergency safety, provider search, journey create, pending action, sync, feedback, and offline-backend search fallback.
+Guidance coverage includes intent fallback, malformed AI rejection, hazard safety, advisory ranking, plan create, pending action, sync, feedback and offline-backend search fallback.
 
 ### Demo
 
 Recommended sequence:
 
 1. Open http://127.0.0.1:3000
-2. Enter: `I need a cardiologist in Nairobi.`
-3. Show structured intent and provider results (demo-data badges)
-4. Open a facility and review requirements / last updated
-5. Start healthcare journey
+2. Enter: `Maize leaf yellowing in Kiambu`
+3. Show structured intent and ranked advisories (demo-data badges)
+4. Open the top advisory and review field checks, caution and last-updated label
+5. Save it to a farm plan
 6. Disable network (DevTools Offline or Wi‑Fi off)
-7. Confirm Offline status and saved journey still available
-8. Save an offline note (pending)
-9. Restore network → synchronizing → synced
-10. Submit feedback
+7. Confirm Offline status; tick a step and log an observation (pending)
+8. Restore network → synchronizing → synced
+9. Open the SMS / USSD tab and try `*384*40#` or an SMS such as `Mahindi yangu yana wadudu Kiambu`
+10. Open `/cheatsheet.html` to show the printable dial sheet
 
 See also:
 
@@ -199,14 +218,14 @@ See also:
 ### Layout
 
 ```text
-src/healthcare     Intent, safety, synthetic providers, care flow
+src/guidance       Intent, hazard safety, synthetic advisories, guidance flow
 src/server         HTTP API + static PWA
 src/llm            ModelScope / Ollama / mock router
 src/storage        SQLite schema + repository
 src/offline        Legacy channel queue sync
-src/channels       SMS / USSD simulators (secondary)
-public             Care-first PWA (IndexedDB + service worker)
-scripts/seed.js    Demo provider seeding
+src/channels       SMS / USSD simulators
+public             Field-ready PWA (IndexedDB + service worker) and dial sheet
+scripts/seed.js    Demo advisory seeding
 tests              Vitest
 docs               Submission / demo materials
 ```

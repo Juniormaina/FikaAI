@@ -1,4 +1,5 @@
 import { findKnownItem, parseSale, periodFromText } from './sales.js';
+import { isGuidanceQuestion } from '../guidance/intent.js';
 
 function languageChoice(text) {
   if (/\b(kiswahili|swahili)\b/i.test(text)) return 'sw';
@@ -109,6 +110,11 @@ function matchGreeting(text) {
   return { intent: 'greeting', confidence: 0.9, slots: {} };
 }
 
+function matchGuidance(text) {
+  if (!isGuidanceQuestion(text)) return null;
+  return { intent: 'crop_guidance', confidence: 0.92, slots: {} };
+}
+
 export function matchRules(text) {
   const input = String(text || '').trim();
   if (!input) return null;
@@ -122,6 +128,7 @@ export function matchRules(text) {
     || matchList(input)
     || matchHelp(input)
     || matchGreeting(input)
+    || matchGuidance(input)
     || matchRecord(input);
 }
 

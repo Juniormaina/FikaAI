@@ -12,13 +12,15 @@ import { createTextChannel } from '../channels/text-channel.js';
 import { createUssdChannel } from '../channels/ussd.js';
 import { syncQueue } from '../offline/sync.js';
 import {
-  createJourneyFromProvider,
-  queueJourneyAction,
-  runCareSearch,
-  seedProviders,
-  syncJourney,
-} from '../healthcare/care.js';
-import { toProviderRow } from '../healthcare/providers-data.js';
+  createPlanFromAdvisory,
+  queuePlanAction,
+  runGuidanceSearch,
+  seedAdvisories,
+  syncPlan,
+} from '../guidance/guidance.js';
+import { toAdvisoryRow } from '../guidance/advisories-data.js';
+
+const DEMO_NOTICE = 'FikaAI\'s prototype uses synthetic agri data. It is not a replacement for a certified agronomist or veterinary inspection.';
 
 function httpError(status, message) {
   const error = new Error(message);
@@ -38,7 +40,7 @@ export function createApp(options = {}) {
   const db = openDatabase(config.databasePath);
   const repo = createRepo(db);
   repo.ensureUser(config.defaultUserId, 'Local demo');
-  seedProviders(repo);
+  seedAdvisories(repo);
   const connectivity = createConnectivity(repo, config.connectivityMode);
   const llm = options.llm ?? createDefaultLlm(config, {
     connectivity,
@@ -149,7 +151,7 @@ export function createApp(options = {}) {
   app.get('/api/bootstrap', wrap(async (req, res) => {
     const userId = readUserId(req.query.userId);
     const user = repo.ensureUser(userId);
-    const journey = repo.latestJourney(userId);
+    const plan = repo.latestPlan(userId);
     res.json({
       user,
       mode: await connectivity.getMode(),
@@ -157,9 +159,9 @@ export function createApp(options = {}) {
       queue: repo.listQueue(userId),
       messages: repo.listMessages(userId),
       activity: repo.listActivity(userId),
-      journey,
-      providerCount: repo.countProviders(),
-      demoNotice: 'FikaAI\'s prototype uses synthetic provider data. Do not enter sensitive medical information.',
+      plan,
+      advisoryCount: repo.countAdvisories(),
+      demoNotice: DEMO_NOTICE,
       llm: {
         mode: config.llmProvider,
         modelscopeConfigured: Boolean(config.modelscopeApiKey),
@@ -171,115 +173,103 @@ export function createApp(options = {}) {
   }));
 
   app.post('/api/seed', wrap((req, res) => {
-    const force = Boolean(req.body?.force);
-    if (force) {
-      for (const row of repo.listProviders()) {
-        db.prepare('DELETE FROM providers WHERE id = ?').run(row.id);
-      }
-    }
-    const result = seedProviders(repo);
+    if (Boolean(req.body?.force)) repo.clearAdvisories();
+    const result = seedAdvisories(repo);
     res.json({
       ok: true,
       ...result,
-      providers: repo.listProviders().map(toProviderRow),
+      advisories: repo.listAdvisories().map(toAdvisoryRow),
     });
   }));
 
-  app.post('/api/care/search', wrap(async (req, res) => {
+  app.post('/api/guidance/search', wrap(async (req, res) => {
     const userId = readUserId(req.body?.userId);
     const text = readText(req.body?.text);
     const online = await connectivity.isOnline();
     // When demo connectivity is offline, skip hosted AI and use deterministic fallback.
     const llmForSearch = online ? llm : null;
-    const result = await runCareSearch({ repo, llm: llmForSearch, text, userId });
-    if (!online && result.kind !== 'emergency') {
+    const result = await runGuidanceSearch({ repo, llm: llmForSearch, text, userId });
+    if (!online && result.kind !== 'hazard') {
       result.offline = true;
       result.aiUnavailable = true;
       if (!result.message && result.kind === 'results') {
-        result.notice = 'You\'re offline. Showing providers from the local demo directory via fallback search.';
+        result.notice = 'You\'re offline. Showing guidance from the on-device demo library via fallback search.';
       }
     } else if (result.aiUnavailable && result.kind === 'results') {
-      result.notice = 'AI assistance is temporarily unavailable. You can still search available healthcare providers.';
+      result.notice = 'AI assistance is temporarily unavailable. You can still search the guidance library.';
     }
     res.json(result);
   }));
 
-  app.get('/api/care/providers', wrap((req, res) => {
-    const specialty = req.query.specialty ? String(req.query.specialty) : null;
-    const location = req.query.location ? String(req.query.location) : null;
-    const providers = repo.searchProviders({ specialty, location }).map(toProviderRow);
-    res.json({
-      providers,
-      demoNotice: 'Synthetic provider data — for demonstration only',
-    });
+  app.get('/api/guidance/advisories', wrap((req, res) => {
+    const crop = req.query.crop ? String(req.query.crop) : null;
+    const advisories = (crop ? repo.searchAdvisories({ crop }) : repo.listAdvisories()).map(toAdvisoryRow);
+    res.json({ advisories, demoNotice: 'Synthetic agri data — for demonstration only' });
   }));
 
-  app.get('/api/care/providers/:id', wrap((req, res) => {
-    const provider = repo.getProvider(req.params.id);
-    if (!provider) throw httpError(404, 'Provider not found');
-    res.json({ provider: toProviderRow(provider) });
+  app.get('/api/guidance/advisories/:id', wrap((req, res) => {
+    const advisory = repo.getAdvisory(req.params.id);
+    if (!advisory) throw httpError(404, 'Advisory not found');
+    res.json({ advisory: toAdvisoryRow(advisory) });
   }));
 
-  app.post('/api/care/journeys', wrap((req, res) => {
+  app.post('/api/guidance/plans', wrap((req, res) => {
     const userId = readUserId(req.body?.userId);
-    const providerId = String(req.body?.providerId || '').trim();
-    if (!providerId) throw httpError(400, 'providerId is required');
-    const journey = createJourneyFromProvider({
+    const advisoryId = String(req.body?.advisoryId || '').trim();
+    if (!advisoryId) throw httpError(400, 'advisoryId is required');
+    const plan = createPlanFromAdvisory({
       repo,
       userId,
-      providerId,
+      advisoryId,
       intent: req.body?.intent || null,
       queryText: req.body?.queryText ? String(req.body.queryText).slice(0, 500) : null,
     });
-    if (!journey) throw httpError(404, 'Provider not found');
-    res.status(201).json({ journey });
+    if (!plan) throw httpError(404, 'Advisory not found');
+    res.status(201).json({ plan });
   }));
 
-  app.get('/api/care/journeys/latest', wrap((req, res) => {
+  app.get('/api/guidance/plans/latest', wrap((req, res) => {
     const userId = readUserId(req.query.userId);
-    const journey = repo.latestJourney(userId);
-    const actions = journey ? repo.listJourneyActions(journey.id) : [];
-    res.json({ journey, actions });
+    const plan = repo.latestPlan(userId);
+    const actions = plan ? repo.listPlanActions(plan.id) : [];
+    res.json({ plan, actions });
   }));
 
-  app.get('/api/care/journeys/:id', wrap((req, res) => {
+  app.get('/api/guidance/plans/:id', wrap((req, res) => {
     const userId = readUserId(req.query.userId);
-    const journey = repo.getJourney(req.params.id, userId);
-    if (!journey) throw httpError(404, 'Journey not found');
-    res.json({
-      journey,
-      actions: repo.listJourneyActions(journey.id),
-    });
+    const plan = repo.getPlan(req.params.id, userId);
+    if (!plan) throw httpError(404, 'Plan not found');
+    res.json({ plan, actions: repo.listPlanActions(plan.id) });
   }));
 
-  app.post('/api/care/journeys/:id/actions', wrap((req, res) => {
+  app.post('/api/guidance/plans/:id/actions', wrap((req, res) => {
     const userId = readUserId(req.body?.userId);
     const actionType = String(req.body?.actionType || 'note').trim().slice(0, 64);
     const payload = req.body?.payload && typeof req.body.payload === 'object'
       ? req.body.payload
-      : { note: String(req.body?.note || 'Offline check-in').slice(0, 200) };
-    const result = queueJourneyAction({
+      : { note: String(req.body?.note || 'Offline field note').slice(0, 200) };
+    const result = queuePlanAction({
       repo,
-      journeyId: req.params.id,
+      planId: req.params.id,
       userId,
       actionType,
       payload,
     });
-    if (!result) throw httpError(404, 'Journey not found');
+    if (!result) throw httpError(404, 'Plan not found');
     res.status(201).json(result);
   }));
 
-  app.post('/api/care/journeys/:id/sync', wrap(async (req, res) => {
+  app.post('/api/guidance/plans/:id/sync', wrap(async (req, res) => {
     const userId = readUserId(req.body?.userId);
     if (!(await connectivity.isOnline())) {
       throw httpError(409, 'Cannot sync while offline');
     }
-    const result = syncJourney({ repo, journeyId: req.params.id, userId });
-    if (!result) throw httpError(404, 'Journey not found');
+    const result = syncPlan({ repo, planId: req.params.id, userId });
+    if (!result) throw httpError(404, 'Plan not found');
     res.json(result);
   }));
 
-  app.post('/api/care/feedback', wrap((req, res) => {
+  app.post('/api/guidance/feedback', wrap((req, res) => {
     const userId = readUserId(req.body?.userId);
     const rating = String(req.body?.rating || '').trim().toLowerCase();
     if (!['yes', 'partly', 'no'].includes(rating)) {
@@ -288,13 +278,13 @@ export function createApp(options = {}) {
     const comment = req.body?.comment == null
       ? null
       : String(req.body.comment).trim().slice(0, 300);
-    const journeyId = req.body?.journeyId ? String(req.body.journeyId) : null;
-    if (journeyId) {
-      const journey = repo.getJourney(journeyId, userId);
-      if (!journey) throw httpError(404, 'Journey not found');
-      repo.updateJourney(journeyId, userId, { status: 'FEEDBACK' });
+    const planId = req.body?.planId ? String(req.body.planId) : null;
+    if (planId) {
+      const plan = repo.getPlan(planId, userId);
+      if (!plan) throw httpError(404, 'Plan not found');
+      repo.updatePlan(planId, userId, { status: 'FEEDBACK' });
     }
-    const feedback = repo.createFeedback({ userId, journeyId, rating, comment });
+    const feedback = repo.createFeedback({ userId, planId, rating, comment });
     res.status(201).json({ feedback });
   }));
 

@@ -1,20 +1,20 @@
 # One-minute pitch (~45–60 seconds)
 
 **Problem**  
-Finding the right care is hard when you don’t know whether a facility can help you — or whether you need a referral — before you travel.
+Farm problems come up in the field, far from good signal. Guidance that needs a live connection, or that vanishes when the network drops, is not much use at the plot.
 
 **Who experiences it**  
-People navigating specialist care with intermittent connectivity, where a wasted trip costs time, money, and trust.
+Smallholders, extension officers and cooperatives working in intermittent-connectivity areas, where a wrong or delayed decision costs a season's yield.
 
 **FikaAI solution**  
-FikaAI is a care-navigation prototype. You describe what you need in plain language, see relevant provider options with requirements clearly shown, and save a healthcare journey you can keep even when the network drops.
+FikaAI is a farm-advisory prototype. You describe a crop or livestock problem in plain English or Kiswahili, see ranked guidance with field checks and cautions, and save a farm plan you can keep even when the network drops. A basic phone can reach the same guidance by SMS or USSD.
 
 **AI contribution**  
-AI turns natural language into structured search intent. Provider facts come from a synthetic directory — not from the model inventing hospitals or availability.
+AI turns natural language into structured search intent. Advice comes from a synthetic advisory library, not from the model inventing products or rates.
 
 **Offline capability**  
-When connectivity disappears, the saved journey stays on the device. When it returns, pending actions synchronize.
+When connectivity disappears, the saved plan stays on the device and you can still tick steps and log observations. When it returns, pending actions synchronize.
 
 **Demo result**  
-In under two minutes you can watch: ask → understand → discover → save → go offline → reconnect → sync.  
-FikaAI — healthcare access that works when connectivity doesn't.
+In under two minutes you can watch: ask → understand → review → save → go offline → log an observation → reconnect → sync.  
+FikaAI — farming guidance that works when signal doesn't.

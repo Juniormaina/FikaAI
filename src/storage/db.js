@@ -73,41 +73,42 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS providers (
+CREATE TABLE IF NOT EXISTS advisories (
   id TEXT PRIMARY KEY,
-  facility_name TEXT NOT NULL,
-  facility_type TEXT NOT NULL,
-  location TEXT NOT NULL,
-  county TEXT NOT NULL,
-  specialties TEXT NOT NULL,
-  specialist_name TEXT NOT NULL,
-  availability_status TEXT NOT NULL,
-  availability_note TEXT,
-  appointment_required INTEGER NOT NULL DEFAULT 1,
-  referral_required INTEGER NOT NULL DEFAULT 0,
-  contact_information TEXT,
-  instructions TEXT,
+  title TEXT NOT NULL,
+  category TEXT NOT NULL,
+  crops TEXT NOT NULL,
+  regions TEXT NOT NULL,
+  urgency TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  symptoms TEXT NOT NULL,
+  field_checks TEXT NOT NULL,
+  remediation TEXT NOT NULL,
+  caution TEXT,
+  protocol_ref TEXT,
+  sms_en TEXT,
+  sms_sw TEXT,
   last_updated TEXT NOT NULL,
   data_source TEXT NOT NULL,
   is_demo_data INTEGER NOT NULL DEFAULT 1
 );
 
-CREATE TABLE IF NOT EXISTS journeys (
+CREATE TABLE IF NOT EXISTS farm_plans (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id),
-  provider_id TEXT NOT NULL,
+  advisory_id TEXT NOT NULL,
   status TEXT NOT NULL,
   sync_status TEXT NOT NULL,
   intent_json TEXT,
   query_text TEXT,
-  provider_snapshot TEXT NOT NULL,
+  advisory_snapshot TEXT NOT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS journey_actions (
+CREATE TABLE IF NOT EXISTS plan_actions (
   id TEXT PRIMARY KEY,
-  journey_id TEXT NOT NULL REFERENCES journeys(id),
+  plan_id TEXT NOT NULL REFERENCES farm_plans(id),
   user_id TEXT NOT NULL REFERENCES users(id),
   action_type TEXT NOT NULL,
   payload_json TEXT,
@@ -116,10 +117,10 @@ CREATE TABLE IF NOT EXISTS journey_actions (
   completed_at TEXT
 );
 
-CREATE TABLE IF NOT EXISTS feedback (
+CREATE TABLE IF NOT EXISTS guidance_feedback (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id),
-  journey_id TEXT,
+  plan_id TEXT,
   rating TEXT NOT NULL,
   comment TEXT,
   created_at TEXT NOT NULL

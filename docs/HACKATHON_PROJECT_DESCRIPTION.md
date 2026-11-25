@@ -4,24 +4,24 @@
 
 ### What are you building?
 
-FikaAI is a care-navigation prototype that helps people turn a natural-language healthcare need into structured search intent, discover synthetic demo provider options, save a lightweight healthcare journey, and keep that journey available when connectivity drops.
+FikaAI is a farm-advisory prototype that helps people turn a natural-language crop or livestock question into structured search intent, review ranked guidance from a synthetic advisory library, save a farm plan, and keep that plan available when connectivity drops.
 
 ### Who is it for?
 
-People who need to find appropriate care options under intermittent connectivity — for example, someone in Nairobi looking for a specialist without wanting to travel before understanding appointment or referral requirements.
+Smallholders, field extension officers and cooperatives working under intermittent connectivity, for example a maize farmer in Kiambu who needs to know what to check before applying fertiliser.
 
 ### What problem does it solve?
 
-Care navigation often fails in two places: uncertain facility requirements before travel, and loss of context when the network disappears mid-journey. FikaAI addresses that navigation gap; it does not diagnose conditions or claim live hospital availability.
+Field advice often fails in two places: it needs a connection that is not there, and the context is lost when the network drops mid-task. FikaAI addresses that gap. It does not replace a certified agronomist or veterinarian, and it does not present synthetic data as verified advice.
 
 ### How does AI contribute?
 
-AI (hosted Qwen via ModelScope, optional local Ollama, or deterministic fallback) extracts structured intent such as specialty and location. The application then queries a synthetic provider database. AI does not invent hospitals, doctors, or availability.
+AI (hosted Qwen via ModelScope, optional local Ollama, or deterministic fallback) extracts structured intent such as crop, region and symptom. The application then ranks stored advisories. AI does not invent products, rates or diagnoses.
 
 ### Why does offline capability matter?
 
-Connectivity can drop after a user has already found a facility. FikaAI caches the journey in IndexedDB, shows a clear Offline state, queues pending actions, and synchronizes when the connection returns.
+Connectivity can drop after a user has already found guidance. FikaAI caches the plan in IndexedDB, shows a clear Offline state, queues pending observations, and synchronizes when the connection returns. SMS and USSD simulators show the same guidance reaching basic phones.
 
 ### What makes the prototype technically interesting?
 
-It separates AI understanding from factual provider data, combines a PWA/service worker with IndexedDB journey persistence, and demonstrates real sync-state transitions — while keeping SMS/USSD simulators as secondary channels.
+It separates AI understanding from stored advisory content, combines a PWA and service worker with IndexedDB plan persistence, demonstrates real sync-state transitions, and serves the same guidance over web, SMS and USSD.

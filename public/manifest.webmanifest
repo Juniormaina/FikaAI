@@ -1,11 +1,11 @@
 {
-  "name": "FikaAI",
+  "name": "FikaAI — Extension & Advisory",
   "short_name": "FikaAI",
-  "description": "Healthcare access that works when connectivity doesn't.",
+  "description": "Farming guidance that works when signal doesn't.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#e8f2f0",
-  "theme_color": "#0b5f5c",
+  "background_color": "#f3fcf5",
+  "theme_color": "#144532",
   "icons": [
     {
       "src": "/icon.svg",
