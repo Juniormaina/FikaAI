@@ -9,6 +9,7 @@ const SIGNALS = [
   { intent: 'explain_records', weight: 3, any: ['explain', 'eleza', 'summarise', 'summarize', 'describe'] },
   { intent: 'external_info', weight: 3, any: ['market price', 'bei ya', 'weather', 'hali ya hewa', 'sokoni'] },
   { intent: 'calculate', weight: 3, any: ['calculate', 'hesabu', 'compute'] },
+  { intent: 'crop_guidance', weight: 3, any: ['yellowing', 'leaves', 'armyworm', 'blight', 'pests', 'wadudu', 'majani', 'manjano', 'ugonjwa', 'mastitis', 'crop problem'] },
   { intent: 'greeting', weight: 2, any: ['hello', 'habari', 'mambo', 'good morning', 'niaje'] },
   { intent: 'list_records', weight: 2, any: ['show records', 'onyesha', 'angalia', 'what did i record'] },
 ];

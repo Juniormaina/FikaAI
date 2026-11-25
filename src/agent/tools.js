@@ -4,6 +4,7 @@ import { parseSale } from './sales.js';
 import { SYSTEM_PROMPT, buildLlmPrompt } from '../llm/provider.js';
 import { formatKes, formatQuantity, labelItem, priceUnit, todayInNairobi } from '../i18n/format.js';
 import { t } from '../i18n/language.js';
+import { answerGuidanceText } from '../guidance/guidance.js';
 
 function pack(language) {
   if (language === 'sw') return 'sw';
@@ -59,6 +60,8 @@ export function createTools({ repo, llm }) {
           return this.calculate(input);
         case 'external_info':
           return this.externalInfo(input);
+        case 'crop_guidance':
+          return this.cropGuidance(input);
         case 'explain_records':
           return this.explain(input);
         case 'help':
@@ -209,6 +212,45 @@ export function createTools({ repo, llm }) {
           actions: [{ type: 'tool', name: 'calculator', detail: 'Rejected expression' }],
         };
       }
+    },
+
+    cropGuidance({ language, userText }) {
+      const shown = displayLang(language);
+      const lang = pack(language);
+      const answer = answerGuidanceText(repo, userText);
+      if (answer.kind === 'hazard') {
+        return {
+          text: answer.message,
+          tier: 'rules',
+          actions: [{ type: 'tool', name: 'safety', detail: 'Field hazard language detected' }],
+        };
+      }
+      if (answer.kind === 'clarify') {
+        return {
+          text: t(lang, 'guidanceClarify'),
+          tier: 'rules',
+          actions: [{ type: 'tool', name: 'guidance_library', detail: 'Needed a crop or animal' }],
+        };
+      }
+      if (answer.kind === 'empty') {
+        return {
+          text: t(lang, 'guidanceEmpty'),
+          tier: 'rules',
+          actions: [{ type: 'tool', name: 'guidance_library', detail: 'No matching advisory' }],
+        };
+      }
+      const { advisory } = answer;
+      const body = shown === 'sw' ? (advisory.smsSw || advisory.smsEn) : advisory.smsEn;
+      const text = [
+        t(lang, 'guidanceHeader', { title: advisory.title, percent: advisory.matchPercent }),
+        body,
+        t(lang, 'guidanceFooter'),
+      ].join('\n');
+      return {
+        text,
+        tier: 'rules',
+        actions: [{ type: 'tool', name: 'guidance_library', detail: advisory.id }],
+      };
     },
 
     externalInfo({ language, slots }) {

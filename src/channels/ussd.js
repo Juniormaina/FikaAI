@@ -20,7 +20,10 @@ export function createUssdChannel({ gateway, repo }) {
       const user = repo.ensureUser(userId);
       const lang = user.language === 'sw' ? 'sw' : 'en';
       const session = repo.getUssdSession(userId) ?? { state: 'menu', mode: null };
-      const typed = String(input ?? '').trim();
+      let typed = String(input ?? '').trim();
+      // Dial-string shortcuts: *384*40# opens the menu, *384*40*1# jumps to option 1.
+      const dial = typed.match(/^\*384\*40(?:\*(\d))?#$/);
+      if (dial) typed = dial[1] ?? '';
 
       const finish = async (message, response, display, nextSession) => {
         await channel.receive(message);

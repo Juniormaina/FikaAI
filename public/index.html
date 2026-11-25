@@ -3,167 +3,429 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0b5f5c" />
-    <meta name="description" content="FikaAI — Healthcare access that works when connectivity doesn't." />
-    <title>FikaAI</title>
+    <meta name="theme-color" content="#144532" />
+    <meta name="description" content="FikaAI — Farming guidance that works when signal doesn't." />
+    <title>FikaAI — Extension &amp; Advisory</title>
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body data-mode="online" data-browser="online">
-    <div class="atmosphere" aria-hidden="true"></div>
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <defs>
+        <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+        <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3 5 14h6l-1 7 8-11h-6z"/></symbol>
+        <symbol id="i-sprout" viewBox="0 0 24 24"><path d="M12 21v-9"/><path d="M12 12c0-4 2.5-6.5 7-6.5 0 4-2.5 6.5-7 6.5z"/><path d="M12 15c0-3-2-5-6-5 0 3 2 5 6 5z"/></symbol>
+        <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol>
+        <symbol id="i-dial" viewBox="0 0 24 24"><circle cx="6" cy="5" r="1.2"/><circle cx="12" cy="5" r="1.2"/><circle cx="18" cy="5" r="1.2"/><circle cx="6" cy="11" r="1.2"/><circle cx="12" cy="11" r="1.2"/><circle cx="18" cy="11" r="1.2"/><circle cx="6" cy="17" r="1.2"/><circle cx="12" cy="17" r="1.2"/><circle cx="18" cy="17" r="1.2"/><circle cx="12" cy="22" r="0.4"/></symbol>
+        <symbol id="i-message" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+        <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 2.5 20h19z"/><path d="M12 10v4"/><path d="M12 17.2v.1"/></symbol>
+        <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1-.6-7.96A5.5 5.5 0 0 1 17 9a4.5 4.5 0 0 1 0 9z"/><path d="m9.5 13.5 2 2 3.5-4"/></symbol>
+        <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3h10v6"/><rect x="4" y="9" width="16" height="8" rx="2"/><path d="M7 14h10v7H7z"/></symbol>
+        <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></symbol>
+        <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="m11 6-6 6 6 6"/></symbol>
+        <symbol id="i-clipboard" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9z"/><path d="m9 13 2 2 4-4"/></symbol>
+      </defs>
+    </svg>
 
-    <header class="top">
-      <div class="brand">
-        <p class="eyebrow">Demo · Synthetic provider data</p>
-        <h1>FikaAI</h1>
-        <p class="tagline">Healthcare access that works when connectivity doesn't.</p>
-      </div>
-      <div class="status-cluster">
-        <div class="status-pill" id="browser-status" title="Browser network status">
-          <span class="dot" id="browser-dot"></span>
-          <span id="browser-label">Online</span>
-        </div>
-        <div class="status-pill muted" id="sync-status" hidden>
-          <span id="sync-label">Synced</span>
-        </div>
-        <div class="field compact">
-          <span>Demo backend</span>
-          <div class="switch" role="group" aria-label="Demo backend connectivity">
-            <button type="button" id="btn-online" aria-pressed="true">Online</button>
-            <button type="button" id="btn-offline" aria-pressed="false">Offline</button>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <div class="wrap">
+        <a class="brand" href="/" aria-label="FikaAI home">
+          <img src="/icon.svg" alt="" width="40" height="40" />
+          <span>
+            <span class="brand-name">FikaAI</span>
+            <span class="brand-sub">Extension &amp; Advisory</span>
+          </span>
+        </a>
+
+        <nav class="tabs" role="tablist" aria-label="Sections">
+          <button type="button" data-tab="guidance" role="tab" aria-selected="true">Find guidance</button>
+          <button type="button" data-tab="poultry" role="tab" aria-selected="false">Poultry</button>
+          <button type="button" data-tab="plan" role="tab" aria-selected="false">Farm plan</button>
+          <button type="button" data-tab="channels" role="tab" aria-selected="false">SMS / USSD</button>
+        </nav>
+
+        <div class="header-actions">
+          <div class="status-pill" id="browser-status" title="Browser network status">
+            <span class="dot" id="browser-dot"></span>
+            <span id="browser-label">Online</span>
+            <span id="sync-status" hidden>· <span id="sync-label">Synced</span></span>
           </div>
+          <div>
+            <span class="switch-label" id="backend-label">Demo backend</span>
+            <div class="switch" role="group" aria-labelledby="backend-label">
+              <button type="button" id="btn-online" aria-pressed="true">Online</button>
+              <button type="button" id="btn-offline" aria-pressed="false">Offline</button>
+            </div>
+          </div>
+          <button type="button" class="btn amber small" id="btn-quick-query" title="Open the USSD demo">
+            Quick Query <span class="mono">*384*40#</span>
+          </button>
         </div>
       </div>
     </header>
 
+    <section class="telemetry" aria-label="Device status">
+      <div class="wrap">
+        <div class="telemetry-inner">
+          <p>
+            <strong>Field status:</strong>
+            <span id="telemetry-cache">Checking local cache…</span>
+            · USSD demo code <span class="dial">*384*40#</span>
+          </p>
+          <span class="pill plain" id="telemetry-sync">No plan saved yet</span>
+        </div>
+      </div>
+    </section>
+
     <p id="privacy-banner" class="banner privacy">
-      FikaAI's prototype uses synthetic provider data. Do not enter sensitive medical information.
+      FikaAI's prototype uses synthetic agri data. It does not replace a certified agronomist or veterinary inspection.
     </p>
-    <p id="offline-banner" class="banner" hidden>
-      You're offline. Your saved healthcare journey is still available.
+    <p id="offline-banner" class="banner offline" hidden>
+      You're offline. Your saved farm plan is still available on this device.
     </p>
-    <p id="notice" class="notice" hidden></p>
+    <p id="notice" class="notice" role="status" hidden></p>
 
-    <nav class="tabs" role="tablist">
-      <button type="button" data-tab="care" role="tab" aria-selected="true">Find care</button>
-      <button type="button" data-tab="journey" role="tab" aria-selected="false">Journey</button>
-      <button type="button" data-tab="channels" role="tab" aria-selected="false">SMS / USSD</button>
-    </nav>
+    <main id="main">
+      <!-- ============ GUIDANCE ============ -->
+      <section id="panel-guidance" data-panel="guidance">
+        <div class="wrap">
+          <div id="view-search" class="view">
+            <div class="hero">
+              <div>
+                <span class="pill"><span class="dot"></span> Demo · Synthetic agri data</span>
+                <h1>Farming guidance that works when signal doesn't.</h1>
+                <p class="lede">
+                  Instant agronomy guidance for smallholders, extension officers, and cooperatives.
+                  Look up crop and livestock problems, save a field plan, and keep it on your phone — or reach it by SMS and USSD.
+                </p>
 
-    <main>
-      <!-- SEARCH -->
-      <section id="panel-care" data-panel="care">
-        <div id="view-search" class="view">
-          <label class="search-label" for="care-input">What healthcare do you need?</label>
-          <form id="care-form" class="care-composer">
-            <textarea
-              id="care-input"
-              name="text"
-              rows="3"
-              maxlength="500"
-              placeholder="I need a cardiologist in Nairobi."
-              autocomplete="off"
-            ></textarea>
-            <button type="submit" class="primary" id="btn-find">Find care</button>
-          </form>
-          <div class="examples" id="care-examples">
-            <button type="button" data-example="I need a cardiologist in Nairobi.">Cardiologist · Nairobi</button>
-            <button type="button" data-example="Looking for pediatrics care in Nairobi">Pediatrics · Nairobi</button>
-            <button type="button" data-example="I need maternal health care in Nairobi">Maternal health</button>
-          </div>
-          <div id="intent-panel" class="intent-panel" hidden></div>
-          <div id="emergency-panel" class="emergency" hidden></div>
-          <div id="results" class="results"></div>
-        </div>
+                <div class="search-card">
+                  <label for="guidance-input">Ask any crop or livestock question</label>
+                  <form id="guidance-form" class="search-row">
+                    <textarea
+                      id="guidance-input"
+                      name="text"
+                      rows="2"
+                      maxlength="500"
+                      placeholder="Maize leaf yellowing in Kiambu — what should I check first?"
+                      autocomplete="off"
+                    ></textarea>
+                    <button type="submit" class="btn primary" id="btn-find">
+                      Find guidance
+                      <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg>
+                    </button>
+                  </form>
+                  <div class="chips" id="guidance-examples">
+                    <span class="chips-label">Frequent:</span>
+                    <button type="button" class="chip" data-example="Maize leaf yellowing in Kiambu">Maize leaf yellowing</button>
+                    <button type="button" class="chip" data-example="Maize pests Rift Valley">Maize pests · Rift Valley</button>
+                    <button type="button" class="chip" data-example="Dairy cattle feed in a dry spell">Dairy cattle feed</button>
+                    <button type="button" class="chip" data-example="When to plant beans in Nyandarua">Bean planting window</button>
+                    <button type="button" class="chip" data-example="Tomato blight in Kiambu">Tomato blight</button>
+                    <button type="button" class="chip" data-example="Chicks huddling under the lamp">Chick brooding</button>
+                  </div>
+                </div>
 
-        <div id="view-facility" class="view" hidden>
-          <button type="button" class="linkish" id="btn-back-results">← Back to results</button>
-          <article id="facility-detail" class="facility-detail"></article>
-          <button type="button" class="primary wide" id="btn-start-journey">Start healthcare journey</button>
-        </div>
-      </section>
+                <p class="cache-pill">
+                  <svg class="icon" aria-hidden="true"><use href="#i-bolt"/></svg>
+                  <span id="cache-pill-text">Advisory library stored on this device</span>
+                </p>
+              </div>
 
-      <!-- JOURNEY -->
-      <section id="panel-journey" data-panel="journey" hidden>
-        <div id="journey-empty" class="empty-state">
-          <h2>No journey yet</h2>
-          <p>Search for care and select a facility to start your healthcare journey.</p>
-          <button type="button" class="primary" id="btn-go-search">Find care</button>
-        </div>
-        <div id="journey-active" hidden>
-          <h2>Your Healthcare Journey</h2>
-          <ul class="checklist" id="journey-checklist">
-            <li class="done">Healthcare need identified</li>
-            <li class="done">Facility selected</li>
-            <li class="done">Provider information saved</li>
-            <li class="next">Next step: Contact/visit facility according to the displayed requirements.</li>
-          </ul>
-
-          <div class="journey-meta" id="journey-meta"></div>
-
-          <div class="offline-box" id="offline-box" hidden>
-            <h3>Offline mode</h3>
-            <p>Your saved journey is available.</p>
-            <p class="meta" id="offline-updated"></p>
-            <p class="meta">Some information may be out of date.</p>
-          </div>
-
-          <div class="actions-row">
-            <button type="button" id="btn-offline-action">Save offline note</button>
-            <button type="button" id="btn-sync-journey" class="primary" hidden>Sync now</button>
-            <button type="button" id="btn-retry-sync" hidden>Retry</button>
-          </div>
-
-          <div id="sync-banner" class="notice" hidden></div>
-
-          <section id="feedback-panel" class="feedback" hidden>
-            <h3>Did FikaAI help you understand where to seek care?</h3>
-            <div class="feedback-options">
-              <button type="button" data-rating="yes">Yes</button>
-              <button type="button" data-rating="partly">Partly</button>
-              <button type="button" data-rating="no">No</button>
+              <aside id="home-plan" class="card accent plan-preview" aria-live="polite"></aside>
             </div>
-            <label class="sr-only" for="feedback-comment">Optional comment</label>
-            <input id="feedback-comment" maxlength="300" placeholder="Optional short comment (no medical details)" />
-            <p id="feedback-done" class="meta" hidden>Thank you — feedback saved locally.</p>
-          </section>
+
+            <div id="intent-panel" class="intent-panel" hidden></div>
+            <div id="hazard-panel" class="hazard" role="alert" hidden></div>
+
+            <div class="results-layout" id="results-layout" hidden>
+              <div id="results" class="results"></div>
+              <aside class="side-stack">
+                <div class="card side-card">
+                  <h3>Send it by SMS</h3>
+                  <p>Every result has a short SMS version for feature phones. Use <strong>Preview as SMS</strong> on a card to see it.</p>
+                </div>
+                <div class="card side-card accent-amber">
+                  <h3>Still unsure after checking?</h3>
+                  <p>Ask your ward extension officer to inspect the plot in person. Demo contact: <span class="contact">+254 700 000 000</span></p>
+                </div>
+              </aside>
+            </div>
+
+            <div id="home-sections">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">Field resilience</p>
+                  <h2>Useful guidance across every signal environment</h2>
+                </div>
+                <p>Built for smallholders, field scouts, and extension officers working beyond network coverage.</p>
+              </div>
+              <div class="grid-3">
+                <article class="card feature">
+                  <div class="icon-badge"><svg class="icon" aria-hidden="true"><use href="#i-sprout"/></svg></div>
+                  <h3>Crop &amp; livestock guidance</h3>
+                  <p>Describe a symptom in plain English or Kiswahili and get ranked pathways to check, with what to confirm in the field.</p>
+                  <div class="foot"><span class="meta" id="feature-count">Demo library</span></div>
+                </article>
+                <article class="card feature amber">
+                  <div class="icon-badge"><svg class="icon" aria-hidden="true"><use href="#i-clipboard"/></svg></div>
+                  <h3>Saved farm plans offline</h3>
+                  <p>Save a plan before heading to the plot. Tick steps and log observations with no signal — they sync when you reconnect.</p>
+                  <div class="foot"><span class="meta">Stored on this device</span></div>
+                </article>
+                <article class="card feature">
+                  <div class="icon-badge"><svg class="icon" aria-hidden="true"><use href="#i-dial"/></svg></div>
+                  <h3>SMS &amp; USSD fallback</h3>
+                  <p>On a basic phone, ask by SMS or dial <span class="dial">*384*40#</span> (demo code) to reach the same guidance.</p>
+                  <div class="foot">
+                    <span class="meta">Feature phone friendly</span>
+                    <button type="button" class="linkish" data-goto="channels">Try it <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+                  </div>
+                </article>
+              </div>
+
+              <div class="card stats" id="home-stats">
+                <div><p class="stat-num" id="stat-advisories">–</p><h3>Demo advisories</h3><p>Synthetic guidance records stored in the on-device library.</p></div>
+                <div><p class="stat-num">7</p><h3>Crops &amp; livestock groups</h3><p>Maize, beans, tomatoes, potatoes, coffee, dairy cattle, and poultry.</p></div>
+                <div><p class="stat-num amber">2</p><h3>Languages</h3><p>English and Kiswahili replies over SMS and USSD.</p></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Advisory detail -->
+          <div id="view-advisory" class="view" hidden>
+            <button type="button" class="linkish" id="btn-back-results">
+              <svg class="icon" aria-hidden="true"><use href="#i-back"/></svg> Back to guidance
+            </button>
+            <article id="advisory-detail"></article>
+            <button type="button" class="btn primary wide" id="btn-save-plan" style="margin-top:1rem">Save to farm plan (offline)</button>
+          </div>
         </div>
       </section>
 
-      <!-- SECONDARY CHANNELS -->
+      <!-- ============ FARM PLAN ============ -->
+      <section id="panel-plan" data-panel="plan" hidden>
+        <div class="wrap">
+          <div class="view">
+            <div id="plan-empty" class="card empty-card">
+              <h2>No farm plan yet</h2>
+              <p>Search for guidance and choose <strong>Save to farm plan</strong> to keep the steps on this device.</p>
+              <button type="button" class="btn primary" id="btn-go-search" style="margin-top:1rem">Find guidance</button>
+            </div>
+
+            <div id="plan-active" hidden>
+              <div class="plan-head">
+                <div>
+                  <p class="eyebrow">Saved field plan</p>
+                  <h2 id="plan-title"></h2>
+                  <p class="meta" id="plan-sub"></p>
+                </div>
+                <div class="chips-row" id="plan-chips"></div>
+              </div>
+
+              <div id="sync-banner" class="notice" hidden></div>
+
+              <div class="plan-layout">
+                <div>
+                  <div class="card">
+                    <div class="row">
+                      <h3>Protocol sequence</h3>
+                      <span class="pill" id="plan-progress-label">0 of 0 done</span>
+                    </div>
+                    <div class="progress" aria-hidden="true"><span id="plan-progress-bar" style="width:0%"></span></div>
+                    <ul class="steps" id="plan-steps"></ul>
+                    <div class="card-actions" style="margin-top:1rem">
+                      <button type="button" class="btn primary" id="btn-sync-plan" hidden>Sync now</button>
+                      <button type="button" class="btn" id="btn-retry-sync" hidden>Retry sync</button>
+                    </div>
+                  </div>
+
+                  <div class="card obs" style="margin-top:1rem">
+                    <div class="row">
+                      <h3>Log field observation</h3>
+                      <span class="pill warn">Stored locally</span>
+                    </div>
+                    <div class="obs-types" role="group" aria-label="Observation type" id="obs-types">
+                      <button type="button" class="chip" aria-pressed="true" data-kind="Leaf symptom">Leaf symptom</button>
+                      <button type="button" class="chip" aria-pressed="false" data-kind="Pest sighting">Pest sighting</button>
+                      <button type="button" class="chip" aria-pressed="false" data-kind="Soil condition">Soil condition</button>
+                      <button type="button" class="chip" aria-pressed="false" data-kind="Fertiliser applied">Fertiliser applied</button>
+                    </div>
+                    <label class="sr-only" for="obs-text">Field notes</label>
+                    <textarea id="obs-text" maxlength="200" placeholder="e.g. Light yellow striping along row 4 near the furrow. No larvae found in 20 plants."></textarea>
+                    <div class="card-actions" style="margin-top:0.75rem">
+                      <button type="button" class="btn amber" id="btn-save-obs">Save observation to device</button>
+                    </div>
+                    <ul class="obs-list" id="obs-list"></ul>
+                  </div>
+
+                  <section id="feedback-panel" class="card feedback" hidden>
+                    <h3>Did FikaAI help you decide what to check in the field?</h3>
+                    <div class="opts">
+                      <button type="button" class="chip" data-rating="yes">Yes</button>
+                      <button type="button" class="chip" data-rating="partly">Partly</button>
+                      <button type="button" class="chip" data-rating="no">No</button>
+                    </div>
+                    <label class="sr-only" for="feedback-comment">Optional comment</label>
+                    <input id="feedback-comment" type="text" maxlength="300" placeholder="Optional short comment" />
+                    <p id="feedback-done" class="meta" style="margin-top:0.5rem" hidden>Thank you — feedback saved.</p>
+                  </section>
+                </div>
+
+                <aside class="side-stack">
+                  <div class="card side-card">
+                    <h3>Offline status</h3>
+                    <p id="offline-note">Your plan is saved in this browser. Steps you tick and observations you log are queued until you reconnect.</p>
+                    <p class="meta" id="offline-updated" style="margin-top:0.5rem"></p>
+                  </div>
+                  <div class="card side-card">
+                    <h3>Checklist as SMS (simulated)</h3>
+                    <p>Preview this plan as a compressed text for a feature phone.</p>
+                    <div class="sms-preview" id="plan-sms" style="margin-top:0.75rem"></div>
+                  </div>
+                  <div class="card side-card accent-amber">
+                    <h3>Assigned extension officer</h3>
+                    <p>Request an in-person check of this plot.</p>
+                    <p class="contact" style="margin-top:0.5rem">+254 700 000 000 <span class="meta">(demo)</span></p>
+                  </div>
+                  <div class="card side-card emergency-box">
+                    <h3>Safety first</h3>
+                    <p>If anyone has been exposed to a chemical, or animals die suddenly, stop work and contact medical or veterinary help straight away.</p>
+                  </div>
+                  <div class="card side-card">
+                    <h3>Linked advisory</h3>
+                    <p id="plan-ref" class="meta"></p>
+                  </div>
+                </aside>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SMS / USSD ============ -->
+      <!-- ============ POULTRY ============ -->
+      <section id="panel-poultry" data-panel="poultry" hidden>
+        <div class="wrap">
+          <div class="view">
+            <span class="pill">General guidance · confirm with your vet</span>
+            <h2 class="poultry-title">Poultry from hatchlings to adult birds</h2>
+            <p class="lede">
+              Feeding, care, vaccination, housing and hygiene for each stage of a chicken’s life. Saved on this device, so it still opens with no signal.
+            </p>
+
+            <div class="chips stage-chips" id="poultry-stages" role="tablist" aria-label="Poultry life stage"></div>
+            <div id="poultry-stage" aria-live="polite"></div>
+
+            <div class="section-head" style="margin-top:2rem">
+              <div>
+                <p class="eyebrow">All stages</p>
+                <h2>Typical vaccination schedule</h2>
+              </div>
+              <p>A common programme. Your vet may change it for your area and your birds.</p>
+            </div>
+            <div class="card table-card"><div class="table-scroll"><table class="vax-table" id="poultry-vax"></table></div></div>
+
+            <div class="card side-card accent-amber" id="poultry-vet" style="margin-top:1.25rem"></div>
+
+            <div class="poultry-actions">
+              <button type="button" class="btn primary" data-poultry-ask="Chicks huddling under the lamp">Ask about a poultry problem</button>
+              <a class="btn" href="/cheatsheet.html">Printable dial sheet</a>
+            </div>
+            <p class="meta" id="poultry-disclaimer" style="margin-top:1rem"></p>
+          </div>
+        </div>
+      </section>
+
       <section id="panel-channels" data-panel="channels" hidden>
-        <p class="intro">
-          SMS and USSD simulators remain available as secondary demo channels.
-          The primary demo is the Find care → Journey flow.
-        </p>
-        <div class="channel-grid">
-          <article class="channel-card">
-            <h3>SMS simulator</h3>
-            <div id="sms-log" class="sms-log" aria-live="polite"></div>
-            <form id="sms-form" class="composer">
-              <input id="sms-input" maxlength="1000" placeholder="Text FikaAI…" autocomplete="off" />
-              <button type="submit">Send</button>
-            </form>
-          </article>
-          <article class="channel-card">
-            <h3>USSD simulator</h3>
-            <pre id="ussd-screen" class="ussd-screen" aria-live="polite"></pre>
-            <form id="ussd-form" class="composer">
-              <input id="ussd-input" maxlength="1000" placeholder="Enter choice…" autocomplete="off" />
-              <button type="submit">Select</button>
-            </form>
-          </article>
+        <div class="wrap">
+          <div class="view">
+            <span class="pill warn">Zero mobile data? Simulated</span>
+            <h2 style="font-size:clamp(1.6rem,4vw,2.4rem);margin:0.75rem 0">Dial <span class="dial">*384*40#</span> or SMS your symptom.</h2>
+            <p class="lede">
+              These simulators use the same backend a real SMS or USSD gateway would call. The codes shown are demo codes, not live services.
+            </p>
+
+            <div class="channel-grid">
+              <article class="card">
+                <div class="row"><h3>USSD menu flow</h3><span class="pill plain">Simulated</span></div>
+                <div class="terminal" style="margin-top:0.75rem">
+                  <div class="bar"><span>FIKAAI · demo session</span><span>USSD</span></div>
+                  <pre id="ussd-screen" aria-live="polite"></pre>
+                </div>
+                <form id="ussd-form" class="composer">
+                  <label class="sr-only" for="ussd-input">USSD reply</label>
+                  <input id="ussd-input" maxlength="1000" placeholder="Reply: 1, 2, 3, 4 or text" autocomplete="off" />
+                  <button type="submit" class="btn primary">Send</button>
+                </form>
+                <div class="fast">
+                  <span class="chips-label meta">Fast-select:</span>
+                  <button type="button" class="chip" data-ussd="0">Menu (0)</button>
+                  <button type="button" class="chip" data-ussd="1">Problem (1)</button>
+                  <button type="button" class="chip" data-ussd="2">Record sale (2)</button>
+                  <button type="button" class="chip" data-ussd="3">View sales (3)</button>
+                </div>
+              </article>
+
+              <article class="card">
+                <div class="row"><h3>Two-way SMS</h3><span class="pill plain">Simulated</span></div>
+                <div id="sms-log" class="sms-log" aria-live="polite" style="margin-top:0.75rem"></div>
+                <form id="sms-form" class="composer">
+                  <label class="sr-only" for="sms-input">SMS text</label>
+                  <input id="sms-input" maxlength="1000" placeholder="Type a crop symptom or MAIZE 4500…" autocomplete="off" />
+                  <button type="submit" class="btn primary">Send</button>
+                </form>
+                <div class="fast">
+                  <span class="chips-label meta">Try:</span>
+                  <button type="button" class="chip" data-sms="Maize leaf yellowing in Kiambu">Maize yellowing</button>
+                  <button type="button" class="chip" data-sms="Mahindi yangu yana wadudu Kiambu">Wadudu (Kiswahili)</button>
+                  <button type="button" class="chip" data-sms="MAIZE 4500">MAIZE 4500</button>
+                </div>
+              </article>
+            </div>
+
+            <div class="section-head" style="margin-top:2rem">
+              <div>
+                <p class="eyebrow">Fast direct access</p>
+                <h2>Quick-dial code directory</h2>
+              </div>
+              <a class="btn" href="/cheatsheet.html">
+                <svg class="icon" aria-hidden="true"><use href="#i-print"/></svg> Printable dial sheet
+              </a>
+            </div>
+            <div class="quickdial" id="quickdial"></div>
+          </div>
         </div>
       </section>
     </main>
 
-    <footer class="foot">
-      FikaAI · Care navigation prototype · Not a diagnosis system · Not live hospital availability
+    <footer class="site-footer">
+      <div class="wrap">
+        <div class="row">
+          <a class="brand" href="/" aria-label="FikaAI home">
+            <img src="/icon.svg" alt="" width="32" height="32" />
+            <span class="brand-name">FikaAI</span>
+          </a>
+          <nav class="links" aria-label="Footer">
+            <button type="button" data-goto="guidance">Find guidance</button>
+            <button type="button" data-goto="poultry">Poultry</button>
+            <button type="button" data-goto="plan">Saved plans</button>
+            <button type="button" data-goto="channels">USSD shortcodes</button>
+            <a href="/cheatsheet.html">Dial sheet</a>
+          </nav>
+        </div>
+        <p class="advisory-notice">
+          <strong>Advisory notice:</strong> Decision-support prototype using synthetic data. Not a replacement for certified agronomist or veterinary inspection.
+        </p>
+      </div>
     </footer>
+
     <script type="module" src="/app.js"></script>
   </body>
 </html>

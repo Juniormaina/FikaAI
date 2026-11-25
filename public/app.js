@@ -1,28 +1,57 @@
 /**
- * FikaAI PWA — healthcare access vertical slice.
- * IndexedDB caches journey state for true offline continuity.
+ * FikaAI PWA — farming guidance vertical slice.
+ * IndexedDB caches the saved farm plan so it stays usable with no signal.
  */
 
 const userId = 'demo-user';
-const DB_NAME = 'fikaai-care';
+const DB_NAME = 'fikaai-agri';
 const DB_VERSION = 1;
-const STORE = 'journey';
+const STORE = 'plan';
 
 const state = {
-  tab: 'care',
+  tab: 'guidance',
   mode: 'online',
   browserOnline: navigator.onLine,
   intent: null,
   queryText: '',
-  providers: [],
-  selectedProvider: null,
-  journey: null,
+  advisories: [],
+  selected: null,
+  plan: null,
   actions: [],
   syncing: false,
   feedbackSent: false,
+  advisoryCount: null,
+  obsKind: 'Leaf symptom',
+  swReady: false,
+  poultry: null,
+  poultryStage: null,
 };
 
 const $ = (sel) => document.querySelector(sel);
+
+const CATEGORY_LABEL = {
+  nutrient: 'Soil & nutrition',
+  pest: 'Pest',
+  disease: 'Disease',
+  water: 'Water',
+  planting: 'Planting',
+  livestock: 'Livestock',
+};
+
+const URGENCY = {
+  urgent: { label: 'Act soon', cls: 'warn' },
+  advisory: { label: 'Advisory', cls: '' },
+  routine: { label: 'Routine', cls: 'plain' },
+};
+
+const QUICKDIAL = [
+  { menu: 1, title: 'Crop or animal problem', desc: 'Describe a symptom and get ranked guidance back.', code: '*384*40*1#' },
+  { menu: 2, title: 'Record a sale', desc: 'Save a sale such as MAIZE 4500 on the device.', code: '*384*40*2#' },
+  { menu: 3, title: 'View sales', desc: 'Read back what you recorded today.', code: '*384*40*3#' },
+  { menu: 4, title: 'Help', desc: 'See what to type and which languages work.', code: '*384*40*4#' },
+];
+
+/* ---------- IndexedDB ---------- */
 
 function openIdb() {
   return new Promise((resolve, reject) => {
@@ -58,29 +87,31 @@ async function idbGet(key) {
   });
 }
 
-async function cacheJourneyLocally() {
-  if (!state.journey) return;
-  await idbSet('activeJourney', {
-    journey: state.journey,
+async function cachePlanLocally() {
+  if (!state.plan) return;
+  await idbSet('activePlan', {
+    plan: state.plan,
     actions: state.actions,
-    selectedProvider: state.selectedProvider || state.journey.providerSnapshot,
+    selected: state.selected || state.plan.advisorySnapshot,
     intent: state.intent,
     queryText: state.queryText,
     feedbackSent: state.feedbackSent,
-  });
+  }).catch(() => {});
 }
 
-async function restoreJourneyFromCache() {
-  const cached = await idbGet('activeJourney');
-  if (!cached?.journey) return false;
-  state.journey = cached.journey;
+async function restorePlanFromCache() {
+  const cached = await idbGet('activePlan').catch(() => null);
+  if (!cached?.plan) return false;
+  state.plan = cached.plan;
   state.actions = cached.actions || [];
-  state.selectedProvider = cached.selectedProvider || null;
+  state.selected = cached.selected || null;
   state.intent = cached.intent || null;
   state.queryText = cached.queryText || '';
   state.feedbackSent = Boolean(cached.feedbackSent);
   return true;
 }
+
+/* ---------- Helpers ---------- */
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -92,20 +123,66 @@ async function api(path, options = {}) {
   return data;
 }
 
-function showNotice(text) {
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
+}
+
+function icon(name) {
+  return `<svg class="icon" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+}
+
+function showNotice(text, tone = '') {
   const notice = $('#notice');
   notice.hidden = !text;
   notice.textContent = text || '';
+  notice.classList.toggle('warn', tone === 'warn');
 }
+
+function smsSegments(text) {
+  return Math.max(1, Math.ceil(String(text).length / 160));
+}
+
+function formatWhen(iso) {
+  if (!iso) return '—';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString('en-KE', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function doneSteps(actions) {
+  const done = new Set();
+  for (const action of actions) {
+    const index = action.payload?.stepIndex;
+    if (!Number.isInteger(index)) continue;
+    if (action.actionType === 'step_done') done.add(index);
+    if (action.actionType === 'step_undone') done.delete(index);
+  }
+  return done;
+}
+
+function observations(actions) {
+  return actions.filter((action) => action.actionType === 'observation');
+}
+
+function hasPending() {
+  return Boolean(state.plan)
+    && (state.plan.syncStatus === 'pending' || state.plan.syncStatus === 'failed'
+      || state.actions.some((a) => a.status === 'pending'));
+}
+
+/* ---------- Status ---------- */
 
 function setBrowserOnline(online) {
   state.browserOnline = online;
   document.body.dataset.browser = online ? 'online' : 'offline';
   $('#browser-label').textContent = online ? 'Online' : 'Offline';
   $('#offline-banner').hidden = online;
-  $('#offline-box').hidden = online || !state.journey;
-  renderJourneyMeta();
-  updateSyncControls();
+  renderTelemetry();
+  renderPlan();
 }
 
 function applyBackendMode(mode) {
@@ -113,6 +190,28 @@ function applyBackendMode(mode) {
   document.body.dataset.mode = state.mode;
   $('#btn-online').setAttribute('aria-pressed', String(state.mode === 'online'));
   $('#btn-offline').setAttribute('aria-pressed', String(state.mode === 'offline'));
+}
+
+function renderTelemetry() {
+  const count = state.advisoryCount;
+  const cache = state.swReady ? 'Local cache active' : 'Local cache starting';
+  $('#telemetry-cache').textContent = count == null ? cache : `${cache} · ${count} advisories`;
+  const sync = $('#telemetry-sync');
+  if (!state.plan) {
+    sync.textContent = 'No plan saved yet';
+    sync.className = 'pill plain';
+  } else {
+    const label = state.syncing ? 'syncing' : (state.plan.syncStatus || 'synced');
+    sync.textContent = `Plan: ${label}`;
+    sync.className = `pill ${label === 'synced' ? '' : 'warn'}`;
+  }
+  $('#sync-status').hidden = !state.plan;
+  $('#sync-label').textContent = state.syncing ? 'Syncing' : (state.plan?.syncStatus === 'synced' ? 'Synced' : 'Pending');
+  if (count != null) {
+    $('#stat-advisories').textContent = String(count);
+    $('#feature-count').textContent = `${count} demo advisories`;
+    $('#cache-pill-text').textContent = `${count} advisories stored on this device`;
+  }
 }
 
 function showTab(name) {
@@ -123,13 +222,119 @@ function showTab(name) {
   document.querySelectorAll('[data-tab]').forEach((tab) => {
     tab.setAttribute('aria-selected', String(tab.dataset.tab === name));
   });
-  if (name === 'journey') renderJourney();
+  if (name === 'plan') renderPlan();
+  if (name === 'poultry' && !state.poultry) loadPoultry();
+  window.scrollTo({ top: 0 });
 }
 
-function showCareView(view) {
+function showGuidanceView(view) {
   $('#view-search').hidden = view !== 'search';
-  $('#view-facility').hidden = view !== 'facility';
+  $('#view-advisory').hidden = view !== 'advisory';
+  window.scrollTo({ top: 0 });
 }
+
+
+/* ---------- Poultry guide ---------- */
+
+const POULTRY_SECTIONS = [
+  { key: 'feeding', title: 'Feeding' },
+  { key: 'care', title: 'Care' },
+  { key: 'vaccination', title: 'Vaccination', cls: 'vax' },
+  { key: 'accommodation', title: 'Accommodation' },
+  { key: 'hygiene', title: 'Hygiene', cls: 'hyg' },
+];
+
+async function loadPoultry() {
+  try {
+    const guide = await api('/api/poultry');
+    state.poultry = guide;
+    await idbSet('poultryGuide', guide).catch(() => {});
+  } catch {
+    state.poultry = await idbGet('poultryGuide').catch(() => null);
+  }
+  renderPoultry();
+}
+
+function renderPoultry() {
+  const guide = state.poultry;
+  const stagesEl = $('#poultry-stages');
+  const stageEl = $('#poultry-stage');
+  if (!guide) {
+    stagesEl.innerHTML = '';
+    stageEl.innerHTML = '<div class="card"><p>The poultry guide is not on this device yet. Open this tab once while online and it will be saved for offline use.</p></div>';
+    return;
+  }
+  if (!state.poultryStage) state.poultryStage = guide.stages[0].id;
+  stagesEl.innerHTML = guide.stages.map((stage) => `
+    <button type="button" class="chip" role="tab" data-poultry-stage="${escapeHtml(stage.id)}" aria-pressed="${stage.id === state.poultryStage}">
+      ${escapeHtml(stage.name)}<small>${escapeHtml(stage.age)}</small>
+    </button>`).join('');
+
+  const stage = guide.stages.find((item) => item.id === state.poultryStage) || guide.stages[0];
+  const sections = POULTRY_SECTIONS.map(({ key, title, cls }) => `
+    <article class="card stage-card ${cls || ''}">
+      <h4>${escapeHtml(title)}</h4>
+      <ul>${(stage.sections[key] || []).map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>
+    </article>`).join('');
+  stageEl.innerHTML = `
+    <div class="stage-head">
+      <span class="stage-age">${escapeHtml(stage.age)}</span>
+      <h3>${escapeHtml(stage.name)}</h3>
+      <p>${escapeHtml(stage.summary)}</p>
+    </div>
+    <div class="stage-grid">${sections}</div>
+    <div class="watch-card">
+      <h4>Watch for</h4>
+      <ul>${(stage.watch_for || []).map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>
+    </div>`;
+
+  $('#poultry-vax').innerHTML = `
+    <thead><tr><th>Age</th><th>Vaccine</th><th>How</th><th>Note</th></tr></thead>
+    <tbody>${guide.vaccinationSchedule.map((row) => `
+      <tr><td>${escapeHtml(row.age)}</td><td>${escapeHtml(row.vaccine)}</td><td>${escapeHtml(row.how)}</td><td>${escapeHtml(row.note)}</td></tr>`).join('')}</tbody>`;
+
+  $('#poultry-vet').innerHTML = `
+    <h3>Call your vet or animal health provider if you see</h3>
+    <ul style="margin:0.4rem 0;padding-left:1.1rem;display:grid;gap:0.3rem">${guide.callVet.signs.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>
+    <p><strong>${escapeHtml(guide.callVet.note)}</strong></p>`;
+  $('#poultry-disclaimer').textContent = guide.disclaimer;
+}
+
+/* ---------- Home plan preview ---------- */
+
+function renderHomePlan() {
+  const host = $('#home-plan');
+  if (!state.plan) {
+    host.className = 'card accent plan-preview empty-card';
+    host.innerHTML = `
+      <p class="eyebrow">Saved field plan</p>
+      <h3>Nothing saved yet</h3>
+      <p>Search for a crop problem, then choose <strong>Save to farm plan</strong>. Your checklist stays on this device and keeps working with no signal.</p>
+    `;
+    return;
+  }
+  const advisory = state.plan.advisorySnapshot || {};
+  const steps = advisory.steps || [];
+  const done = doneSteps(state.actions);
+  const nextIndex = steps.findIndex((_, i) => !done.has(i));
+  const items = steps.slice(0, 4).map((step, i) => {
+    const cls = done.has(i) ? 'done' : (i === nextIndex ? 'next' : '');
+    return `<li class="${cls}">${escapeHtml(step.title)}</li>`;
+  }).join('');
+  host.className = 'card accent plan-preview';
+  host.innerHTML = `
+    <div class="row">
+      <p class="eyebrow">Saved field plan</p>
+      <span class="pill ${state.plan.syncStatus === 'synced' ? '' : 'warn'}">${state.browserOnline ? escapeHtml(state.plan.syncStatus) : 'Offline snapshot'}</span>
+    </div>
+    <h3>${escapeHtml(advisory.title || 'Saved plan')}</h3>
+    <p class="meta">${done.size} of ${steps.length} steps done</p>
+    <ul class="steps-mini">${items}</ul>
+    <button type="button" class="btn small" data-goto="plan" style="margin-top:1rem">Open full plan ${icon('arrow')}</button>
+  `;
+}
+
+/* ---------- Results ---------- */
 
 function renderIntent(result) {
   const panel = $('#intent-panel');
@@ -141,114 +346,149 @@ function renderIntent(result) {
   panel.hidden = false;
   const source = result.source || result.intent.source || 'unknown';
   const note = result.aiUnavailable
-    ? 'AI unavailable — using deterministic fallback intent.'
-    : `Intent extracted via ${source}.`;
+    ? 'AI unavailable — using deterministic fallback.'
+    : `Understood via ${source}.`;
+  const chips = [
+    ['Crop', result.intent.crop],
+    ['Region', result.intent.region],
+    ['Topic', result.intent.topic],
+  ].map(([label, value]) => `<span class="pill ${value ? '' : 'plain'}">${label}: ${escapeHtml(value || 'not given')}</span>`).join('');
   panel.innerHTML = `
-    <div><strong>Understood need</strong> · ${note}</div>
-    <code>${JSON.stringify({
-      specialty: result.intent.specialty,
-      location: result.intent.location,
-      request_type: result.intent.request_type,
-      urgency: result.intent.urgency,
-      confidence: result.intent.confidence,
-    }, null, 2)}</code>
+    <div><strong>Understood query</strong> · ${escapeHtml(note)}</div>
+    <div class="intent-chips">${chips}</div>
   `;
 }
 
-function providerCardHtml(provider, { detail = false } = {}) {
-  const specialty = (provider.specialties || []).join(', ') || 'General';
+function stepsHtml(steps) {
+  return steps.map((step) => `
+    <li><div><strong>${escapeHtml(step.title)}</strong><span>${escapeHtml(step.detail)}</span></div></li>
+  `).join('');
+}
+
+function advisoryCardHtml(advisory, { detail = false } = {}) {
+  const urgency = URGENCY[advisory.urgency] || URGENCY.advisory;
+  const checks = detail ? advisory.fieldChecks : advisory.fieldChecks.slice(0, 2);
+  const match = advisory.matchPercent != null ? `<span class="pill warn">${advisory.matchPercent}% keyword match</span>` : '';
   return `
-    <h3>${escapeHtml(provider.facilityName)}</h3>
-    <div class="spec">${escapeHtml(specialty)}</div>
-    <p class="meta">${escapeHtml(provider.location)} · ${escapeHtml(provider.facilityType || '')}</p>
-    <dl>
-      <dt>Specialist</dt><dd>${escapeHtml(provider.specialistName)}</dd>
-      <dt>Availability</dt><dd>${escapeHtml(provider.availabilityStatus)}</dd>
-      <dt>Appointment</dt><dd>${provider.appointmentRequired ? 'Required' : 'Not required'}</dd>
-      <dt>Referral</dt><dd>${provider.referralRequired ? 'Required' : 'Not required'}</dd>
-      <dt>Last updated</dt><dd>${escapeHtml(provider.lastUpdatedLabel || provider.lastUpdated)}</dd>
-    </dl>
-    ${detail && provider.availabilityNote ? `<p class="meta">${escapeHtml(provider.availabilityNote)}</p>` : ''}
-    ${detail && provider.instructions ? `<p><strong>Instructions:</strong> ${escapeHtml(provider.instructions)}</p>` : ''}
-    ${detail && provider.contactInformation ? `<p class="meta">${escapeHtml(provider.contactInformation)}</p>` : ''}
-    <span class="demo-badge">Demo data</span>
-    ${detail ? `<div class="warning">${escapeHtml(provider.dataSource || 'Synthetic provider data — for demonstration only')}</div>` : ''}
+    <div class="chips-row">
+      ${match}
+      <span class="pill ${urgency.cls}">${urgency.label}</span>
+      <span class="pill plain">${escapeHtml(CATEGORY_LABEL[advisory.category] || advisory.category)}</span>
+    </div>
+    <h3>${escapeHtml(advisory.title)}</h3>
+    <p class="summary">${escapeHtml(advisory.summary)}</p>
+    <div class="confirm-box">
+      <h4>Step-by-step field confirmation</h4>
+      <ol>${stepsHtml(checks)}</ol>
+    </div>
+    <div class="remedy">
+      <h4>Remediation guidance</h4>
+      <p>${escapeHtml(advisory.remediation)}</p>
+      ${advisory.caution ? `<p class="caution">${icon('alert')}<span>${escapeHtml(advisory.caution)}</span></p>` : ''}
+    </div>
+    <p class="meta">Guidance ID: ${escapeHtml(advisory.protocolRef)} · ${escapeHtml(advisory.dataSource)} · Updated ${escapeHtml(advisory.lastUpdatedLabel)}</p>
   `;
 }
 
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
-}
-
-function renderResults(providers) {
+function renderResults(advisories) {
   const host = $('#results');
   host.replaceChildren();
-  if (!providers.length) {
+  $('#results-layout').hidden = false;
+  $('#home-sections').hidden = true;
+
+  if (!advisories.length) {
     const empty = document.createElement('p');
     empty.className = 'empty';
-    empty.textContent = 'We couldn\'t find a matching provider in the demo directory.';
+    empty.textContent = 'We couldn\'t find matching guidance in the demo library.';
     const retry = document.createElement('button');
     retry.type = 'button';
+    retry.className = 'btn';
     retry.textContent = 'Try another search';
     retry.addEventListener('click', () => {
-      $('#care-input').focus();
-      host.replaceChildren();
-      $('#intent-panel').hidden = true;
+      $('#guidance-input').focus();
+      resetResults();
     });
     host.append(empty, retry);
     return;
   }
-  for (const provider of providers) {
+
+  for (const advisory of advisories) {
     const card = document.createElement('article');
-    card.className = 'provider-card';
-    card.innerHTML = providerCardHtml(provider);
-    const cta = document.createElement('button');
-    cta.type = 'button';
-    cta.className = 'primary';
-    cta.textContent = 'View facility';
-    cta.addEventListener('click', () => openFacility(provider));
-    card.append(cta);
+    card.className = `advisory-card${advisory.urgency === 'urgent' ? ' urgent' : ''}`;
+    card.innerHTML = advisoryCardHtml(advisory);
+
+    const actions = document.createElement('div');
+    actions.className = 'card-actions';
+    const view = document.createElement('button');
+    view.type = 'button';
+    view.className = 'btn small';
+    view.textContent = 'Open full guidance';
+    view.addEventListener('click', () => openAdvisory(advisory));
+    const save = document.createElement('button');
+    save.type = 'button';
+    save.className = 'btn primary small';
+    save.textContent = 'Save to farm plan (offline)';
+    save.addEventListener('click', () => {
+      state.selected = advisory;
+      savePlan();
+    });
+    const sms = document.createElement('button');
+    sms.type = 'button';
+    sms.className = 'btn small';
+    sms.textContent = 'Preview as SMS';
+    const preview = document.createElement('div');
+    preview.className = 'sms-preview';
+    preview.hidden = true;
+    preview.innerHTML = `${escapeHtml(advisory.smsEn)}<small>${smsSegments(advisory.smsEn)} SMS · simulated</small>`;
+    sms.addEventListener('click', () => { preview.hidden = !preview.hidden; });
+    actions.append(save, view, sms);
+    card.append(actions, preview);
     host.append(card);
   }
 }
 
-function openFacility(provider) {
-  state.selectedProvider = provider;
-  $('#facility-detail').innerHTML = providerCardHtml(provider, { detail: true });
-  showCareView('facility');
+function resetResults() {
+  $('#results').replaceChildren();
+  $('#results-layout').hidden = true;
+  $('#home-sections').hidden = false;
+  $('#intent-panel').hidden = true;
+  $('#hazard-panel').hidden = true;
 }
 
-async function findCare(text) {
+function openAdvisory(advisory) {
+  state.selected = advisory;
+  const article = $('#advisory-detail');
+  article.className = 'advisory-card' + (advisory.urgency === 'urgent' ? ' urgent' : '');
+  article.innerHTML = advisoryCardHtml(advisory, { detail: true });
+  showGuidanceView('advisory');
+}
+
+async function findGuidance(text) {
   const query = String(text || '').trim();
   if (!query) return;
   state.queryText = query;
-  $('#emergency-panel').hidden = true;
+  $('#hazard-panel').hidden = true;
   showNotice('Searching…');
-  showCareView('search');
+  showGuidanceView('search');
 
-  // Offline with no network: try cached providers from last search if specialty matches,
-  // otherwise explain limitation.
   if (!state.browserOnline) {
-    showNotice('You\'re offline. Using local fallback search when possible.');
+    showNotice('You\'re offline. Using local fallback search when possible.', 'warn');
   }
 
   try {
-    const result = await api('/api/care/search', {
+    const result = await api('/api/guidance/search', {
       method: 'POST',
       body: JSON.stringify({ userId, text: query }),
     });
 
-    if (result.kind === 'emergency') {
+    if (result.kind === 'hazard') {
       showNotice('');
-      const panel = $('#emergency-panel');
+      const panel = $('#hazard-panel');
       panel.hidden = false;
-      panel.textContent = result.message;
+      panel.innerHTML = `<strong>Safety first</strong>${escapeHtml(result.message)}`;
       $('#intent-panel').hidden = true;
-      $('#results').replaceChildren();
+      resetResults();
+      $('#hazard-panel').hidden = false;
       return;
     }
 
@@ -258,272 +498,297 @@ async function findCare(text) {
     if (result.kind === 'clarify') {
       showNotice(result.message);
       $('#results').replaceChildren();
+      $('#results-layout').hidden = true;
       return;
     }
 
-    if (result.notice) showNotice(result.notice);
+    if (result.notice) showNotice(result.notice, 'warn');
     else if (result.kind === 'empty') showNotice(result.message);
     else showNotice('');
 
-    state.providers = result.providers || [];
-    await idbSet('lastSearch', { query, intent: result.intent, providers: state.providers });
-    renderResults(state.providers);
+    state.advisories = result.advisories || [];
+    await idbSet('lastSearch', { query, intent: result.intent, advisories: state.advisories }).catch(() => {});
+    renderResults(state.advisories);
   } catch (error) {
-    // Network failure: fall back to cached search results if available.
-    const cached = await idbGet('lastSearch');
-    if (cached?.providers?.length) {
-      showNotice('You\'re offline. Showing saved information.');
+    const cached = await idbGet('lastSearch').catch(() => null);
+    if (cached?.advisories?.length) {
+      showNotice('You\'re offline. Showing the last saved guidance.', 'warn');
       state.intent = cached.intent;
-      state.providers = cached.providers;
+      state.advisories = cached.advisories;
       renderIntent({ intent: cached.intent, source: 'cache', aiUnavailable: true });
-      renderResults(state.providers);
+      renderResults(state.advisories);
       return;
     }
-    showNotice(error.message || 'You\'re offline and this information hasn\'t been saved yet.');
-    $('#results').replaceChildren();
+    showNotice(error.message || 'You\'re offline and this guidance hasn\'t been saved yet.', 'warn');
+    resetResults();
   }
 }
 
-async function startJourney() {
-  if (!state.selectedProvider) return;
+/* ---------- Plan ---------- */
+
+async function savePlan() {
+  if (!state.selected) return;
   try {
-    const result = await api('/api/care/journeys', {
+    const result = await api('/api/guidance/plans', {
       method: 'POST',
       body: JSON.stringify({
         userId,
-        providerId: state.selectedProvider.id,
+        advisoryId: state.selected.id,
         intent: state.intent,
         queryText: state.queryText,
       }),
     });
-    state.journey = result.journey;
+    state.plan = result.plan;
     state.actions = [];
     state.feedbackSent = false;
-    await cacheJourneyLocally();
-    showTab('journey');
-    showNotice('Journey started. Provider information saved on this device.');
-  } catch (error) {
-    // If backend unreachable, still create a local-only journey for demo continuity.
-    const localJourney = {
+    await cachePlanLocally();
+    showTab('plan');
+    showNotice('Plan saved. Guidance is stored on this device.');
+  } catch {
+    // Backend unreachable: keep a local-only plan so the farmer can still work.
+    const now = new Date().toISOString();
+    state.plan = {
       id: `local-${Date.now()}`,
       userId,
-      providerId: state.selectedProvider.id,
-      status: 'JOURNEY_STARTED',
+      advisoryId: state.selected.id,
+      status: 'PLAN_SAVED',
       syncStatus: 'pending',
       intent: state.intent,
       queryText: state.queryText,
-      providerSnapshot: state.selectedProvider,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      advisorySnapshot: state.selected,
+      createdAt: now,
+      updatedAt: now,
       localOnly: true,
     };
-    state.journey = localJourney;
     state.actions = [];
     state.feedbackSent = false;
-    await cacheJourneyLocally();
-    showTab('journey');
-    showNotice('Backend unavailable. Journey saved on this device and marked pending.');
+    await cachePlanLocally();
+    showTab('plan');
+    showNotice('Backend unavailable. Plan saved on this device and marked pending.', 'warn');
   }
+  renderHomePlan();
+  renderTelemetry();
 }
 
-function renderJourneyMeta() {
-  const meta = $('#journey-meta');
-  if (!state.journey) {
-    meta.replaceChildren();
-    return;
-  }
-  const provider = state.journey.providerSnapshot || state.selectedProvider || {};
-  const connection = state.browserOnline ? 'Online' : 'Offline';
-  const sync = state.syncing ? 'Syncing' : (state.journey.syncStatus || 'synced');
-  meta.innerHTML = `
-    <div><strong>Facility:</strong> ${escapeHtml(provider.facilityName || 'Saved facility')}</div>
-    <div><strong>Specialist:</strong> ${escapeHtml(provider.specialistName || '—')}</div>
-    <div><strong>Connection:</strong> ${connection}</div>
-    <div><strong>Journey sync:</strong> ${escapeHtml(String(sync))}</div>
-    <div><strong>Last provider update:</strong> ${escapeHtml(provider.lastUpdatedLabel || provider.lastUpdated || '—')}</div>
-    <span class="demo-badge">Cached / demo data</span>
-  `;
-  $('#offline-updated').textContent = `Last provider update: ${provider.lastUpdatedLabel || provider.lastUpdated || '—'}`;
-  $('#sync-status').hidden = false;
-  $('#sync-label').textContent = `Journey: ${sync}`;
+function planSms() {
+  const advisory = state.plan?.advisorySnapshot;
+  if (!advisory) return '';
+  const done = doneSteps(state.actions);
+  const lines = (advisory.steps || []).map((step, i) => `${i + 1}${done.has(i) ? '[x]' : '[ ]'} ${step.title}`);
+  return [`FikaAI plan: ${advisory.title}`, ...lines, 'Demo guidance. Confirm with extension officer.'].join('\n');
 }
 
-function updateSyncControls() {
-  const hasPending = state.journey
-    && (state.journey.syncStatus === 'pending' || state.journey.syncStatus === 'failed'
-      || state.actions.some((a) => a.status === 'pending'));
-  $('#btn-sync-journey').hidden = !(state.browserOnline && hasPending && !state.syncing);
-  $('#btn-retry-sync').hidden = !(state.journey?.syncStatus === 'failed');
-  const feedback = $('#feedback-panel');
-  feedback.hidden = !(state.journey && state.journey.syncStatus === 'synced' && state.browserOnline);
-  if (state.feedbackSent) {
-    $('#feedback-done').hidden = false;
-  }
-}
-
-function renderJourney() {
-  const has = Boolean(state.journey);
-  $('#journey-empty').hidden = has;
-  $('#journey-active').hidden = !has;
+function renderPlan() {
+  const has = Boolean(state.plan);
+  $('#plan-empty').hidden = has;
+  $('#plan-active').hidden = !has;
+  renderHomePlan();
+  renderTelemetry();
   if (!has) return;
-  renderJourneyMeta();
-  $('#offline-box').hidden = state.browserOnline;
-  updateSyncControls();
+
+  const advisory = state.plan.advisorySnapshot || state.selected || {};
+  const steps = advisory.steps || [];
+  const done = doneSteps(state.actions);
+  const nextIndex = steps.findIndex((_, i) => !done.has(i));
+  const sync = state.syncing ? 'Syncing' : (state.plan.syncStatus || 'synced');
+
+  $('#plan-title').textContent = advisory.title || 'Saved plan';
+  $('#plan-sub').textContent = state.plan.queryText ? `From your search: “${state.plan.queryText}”` : '';
+  $('#plan-chips').innerHTML = `
+    <span class="pill">${icon('cloud')} Offline ready</span>
+    <span class="pill ${sync === 'synced' ? '' : 'warn'}">Sync: ${escapeHtml(String(sync))}</span>
+    <span class="pill plain">${state.browserOnline ? 'Online' : 'Offline'}</span>
+  `;
+
+  $('#plan-progress-label').textContent = `${done.size} of ${steps.length} done`;
+  $('#plan-progress-bar').style.width = steps.length ? `${Math.round((done.size / steps.length) * 100)}%` : '0%';
+
+  $('#plan-steps').innerHTML = steps.map((step, i) => {
+    const isDone = done.has(i);
+    const cls = isDone ? 'done' : (i === nextIndex ? 'next' : '');
+    return `
+      <li class="step ${cls}">
+        <label class="hit"><input type="checkbox" data-step="${i}" ${isDone ? 'checked' : ''} aria-label="Mark step ${i + 1} done" /></label>
+        <div>
+          <h4>${i + 1}. ${escapeHtml(step.title)}</h4>
+          <p>${escapeHtml(step.detail)}</p>
+        </div>
+      </li>`;
+  }).join('');
+
+  const obs = observations(state.actions).slice().reverse();
+  $('#obs-list').innerHTML = obs.length
+    ? obs.map((action) => `
+        <li>
+          <div class="row"><span class="pill plain">${escapeHtml(action.payload?.kind || 'Note')}</span>
+          <span class="meta">${escapeHtml(formatWhen(action.payload?.at || action.createdAt))} · ${action.status === 'pending' ? 'pending sync' : 'synced'}</span></div>
+          <p>${escapeHtml(action.payload?.text || '')}</p>
+        </li>`).join('')
+    : '<li class="meta">No observations logged yet.</li>';
+
+  const sms = planSms();
+  $('#plan-sms').innerHTML = `${escapeHtml(sms)}<small>${smsSegments(sms)} SMS · simulated</small>`;
+  $('#plan-ref').textContent = `${advisory.protocolRef || ''} · ${advisory.dataSource || ''}`;
+  $('#offline-updated').textContent = `Guidance last updated: ${advisory.lastUpdatedLabel || advisory.lastUpdated || '—'}`;
+  $('#offline-note').textContent = state.browserOnline
+    ? 'Your plan is saved in this browser. Steps you tick and observations you log are queued if you lose signal.'
+    : 'You\'re offline. Your plan is available and changes are saved on this device until you reconnect.';
+
+  $('#btn-sync-plan').hidden = !(state.browserOnline && hasPending() && !state.syncing);
+  $('#btn-retry-sync').hidden = !(state.plan.syncStatus === 'failed' && state.browserOnline);
+  const feedback = $('#feedback-panel');
+  feedback.hidden = !(state.plan.syncStatus === 'synced' && state.browserOnline);
+  $('#feedback-done').hidden = !state.feedbackSent;
 }
 
-async function saveOfflineNote() {
-  if (!state.journey) return;
-  const note = {
-    text: 'Reviewed facility requirements while offline',
-    at: new Date().toISOString(),
+async function recordAction(actionType, payload) {
+  if (!state.plan) return;
+  const now = new Date().toISOString();
+  const localAction = {
+    id: `local-action-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    planId: state.plan.id,
+    actionType,
+    payload,
+    status: 'pending',
+    createdAt: now,
   };
 
-  if (!state.browserOnline || state.journey.localOnly) {
-    const action = {
-      id: `local-action-${Date.now()}`,
-      journeyId: state.journey.id,
-      actionType: 'offline_note',
-      payload: note,
-      status: 'pending',
-      createdAt: note.at,
-    };
-    state.actions = [...state.actions, action];
-    state.journey = {
-      ...state.journey,
-      syncStatus: 'pending',
-      status: 'SYNC_PENDING',
-      updatedAt: note.at,
-    };
-    await cacheJourneyLocally();
-    showNotice('Offline note saved on this device (pending sync).');
-    renderJourney();
+  const queueLocally = async () => {
+    state.actions = [...state.actions, localAction];
+    state.plan = { ...state.plan, syncStatus: 'pending', status: 'SYNC_PENDING', updatedAt: now };
+    await cachePlanLocally();
+    renderPlan();
+  };
+
+  if (!state.browserOnline || state.plan.localOnly) {
+    await queueLocally();
+    showNotice('Saved on this device (pending sync).', 'warn');
     return;
   }
 
   try {
-    const result = await api(`/api/care/journeys/${state.journey.id}/actions`, {
+    const result = await api(`/api/guidance/plans/${state.plan.id}/actions`, {
       method: 'POST',
-      body: JSON.stringify({
-        userId,
-        actionType: 'offline_note',
-        payload: note,
-      }),
+      body: JSON.stringify({ userId, actionType, payload }),
     });
-    state.journey = result.journey;
+    state.plan = result.plan;
     state.actions = [...state.actions, result.action];
-    await cacheJourneyLocally();
-    showNotice('Note saved. Sync status: pending.');
-    renderJourney();
-  } catch (error) {
-    showNotice(error.message || 'Could not save note');
+    await cachePlanLocally();
+    renderPlan();
+  } catch {
+    await queueLocally();
+    showNotice('Backend unavailable. Saved on this device (pending sync).', 'warn');
   }
 }
 
-async function syncActiveJourney() {
-  if (!state.journey || !state.browserOnline) return;
+async function toggleStep(index, checked) {
+  await recordAction(checked ? 'step_done' : 'step_undone', { stepIndex: index });
+}
+
+async function saveObservation() {
+  const input = $('#obs-text');
+  const text = input.value.trim();
+  if (!text) {
+    showNotice('Add a short note before saving.', 'warn');
+    input.focus();
+    return;
+  }
+  await recordAction('observation', { kind: state.obsKind, text, at: new Date().toISOString() });
+  input.value = '';
+  showNotice('Observation saved on this device.');
+}
+
+async function syncActivePlan() {
+  if (!state.plan || !state.browserOnline) return;
   state.syncing = true;
   const banner = $('#sync-banner');
   banner.hidden = false;
-  banner.textContent = 'Connection restored. Synchronizing your journey…';
-  renderJourneyMeta();
-  updateSyncControls();
+  banner.textContent = 'Connection restored. Synchronizing your plan…';
+  renderPlan();
 
   try {
-    // If journey was local-only, create it on the server first.
-    if (state.journey.localOnly) {
-      const created = await api('/api/care/journeys', {
+    // A local-only plan has to be created on the server first.
+    if (state.plan.localOnly) {
+      const created = await api('/api/guidance/plans', {
         method: 'POST',
         body: JSON.stringify({
           userId,
-          providerId: state.journey.providerId,
-          intent: state.journey.intent,
-          queryText: state.journey.queryText,
+          advisoryId: state.plan.advisoryId,
+          intent: state.plan.intent,
+          queryText: state.plan.queryText,
         }),
       });
-      const oldId = state.journey.id;
-      state.journey = created.journey;
-      // Replay pending local actions
+      state.plan = created.plan;
       for (const action of state.actions.filter((a) => a.status === 'pending')) {
-        await api(`/api/care/journeys/${state.journey.id}/actions`, {
+        await api(`/api/guidance/plans/${state.plan.id}/actions`, {
           method: 'POST',
-          body: JSON.stringify({
-            userId,
-            actionType: action.actionType,
-            payload: action.payload,
-          }),
+          body: JSON.stringify({ userId, actionType: action.actionType, payload: action.payload }),
         });
       }
-      void oldId;
     }
 
-    const result = await api(`/api/care/journeys/${state.journey.id}/sync`, {
+    const result = await api(`/api/guidance/plans/${state.plan.id}/sync`, {
       method: 'POST',
       body: JSON.stringify({ userId }),
     });
-    state.journey = result.journey;
+    state.plan = result.plan;
     state.actions = state.actions.map((a) => (
       a.status === 'pending' ? { ...a, status: 'synced', completedAt: new Date().toISOString() } : a
     ));
-    await cacheJourneyLocally();
+    await cachePlanLocally();
     banner.textContent = 'Synced successfully';
-    showNotice('Synced successfully. Provider information refreshed where available.');
+    showNotice('Synced successfully. Guidance refreshed where available.');
   } catch (error) {
-    state.journey = {
-      ...state.journey,
-      syncStatus: 'failed',
-    };
-    await cacheJourneyLocally();
-    banner.textContent = 'We couldn\'t sync your update. Your journey is safely stored on this device.';
-    showNotice(error.message || 'Sync failed');
+    state.plan = { ...state.plan, syncStatus: 'failed' };
+    await cachePlanLocally();
+    banner.textContent = 'We couldn\'t sync your update. Your plan is safely stored on this device.';
+    showNotice(error.message || 'Sync failed', 'warn');
   } finally {
     state.syncing = false;
-    renderJourney();
+    renderPlan();
   }
 }
 
 async function submitFeedback(rating) {
-  if (!state.journey || state.feedbackSent) return;
+  if (!state.plan || state.feedbackSent) return;
   const comment = $('#feedback-comment').value.trim();
   try {
-    await api('/api/care/feedback', {
+    await api('/api/guidance/feedback', {
       method: 'POST',
       body: JSON.stringify({
         userId,
-        journeyId: state.journey.localOnly ? null : state.journey.id,
+        planId: state.plan.localOnly ? null : state.plan.id,
         rating,
         comment: comment || null,
       }),
     });
   } catch {
-    // Persist feedback intent locally even if API fails.
+    // Keep the rating locally even if the API call fails.
   }
   state.feedbackSent = true;
-  state.journey = { ...state.journey, status: 'FEEDBACK' };
-  await cacheJourneyLocally();
-  await idbSet('lastFeedback', { rating, comment, at: new Date().toISOString() });
-  $('#feedback-done').hidden = false;
+  state.plan = { ...state.plan, status: 'FEEDBACK' };
+  await cachePlanLocally();
+  await idbSet('lastFeedback', { rating, comment, at: new Date().toISOString() }).catch(() => {});
+  renderPlan();
   showNotice('Feedback saved. Thank you.');
 }
 
 async function setBackendMode(mode) {
-  const result = await api('/api/connectivity', {
-    method: 'POST',
-    body: JSON.stringify({ mode }),
-  });
-  applyBackendMode(result.mode);
-  if (result.mode === 'online' && result.sync?.processed?.length) {
-    showNotice(`Synced ${result.sync.processed.length} queued channel request(s).`);
+  try {
+    const result = await api('/api/connectivity', {
+      method: 'POST',
+      body: JSON.stringify({ mode }),
+    });
+    applyBackendMode(result.mode);
+    if (result.mode === 'online' && result.sync?.processed?.length) {
+      showNotice(`Synced ${result.sync.processed.length} queued channel request(s).`);
+    }
+  } catch (error) {
+    showNotice(error.message || 'Could not change the demo backend mode.', 'warn');
   }
 }
 
-async function sendSms(text) {
-  const result = await api('/api/channels/sms', {
-    method: 'POST',
-    body: JSON.stringify({ userId, text }),
-  });
-  appendSms(text, 'user');
-  appendSms(result.text, 'agent');
-}
+/* ---------- Channels ---------- */
 
 function appendSms(text, who) {
   const log = $('#sms-log');
@@ -534,30 +799,73 @@ function appendSms(text, who) {
   log.scrollTop = log.scrollHeight;
 }
 
+async function sendSms(text) {
+  appendSms(text, 'user');
+  const result = await api('/api/channels/sms', {
+    method: 'POST',
+    body: JSON.stringify({ userId, text }),
+  });
+  appendSms(result.response?.text || result.display || '', 'agent');
+}
+
 async function sendUssd(input) {
   const result = await api('/api/channels/ussd', {
     method: 'POST',
     body: JSON.stringify({ userId, input }),
   });
-  $('#ussd-screen').textContent = result.display || result.text || '';
+  $('#ussd-screen').textContent = result.display || result.response?.text || '';
 }
+
+function renderQuickDial() {
+  $('#quickdial').innerHTML = QUICKDIAL.map((item) => `
+    <article class="card">
+      <span class="pill plain">Menu ${item.menu}</span>
+      <h3>${escapeHtml(item.title)}</h3>
+      <p class="meta">${escapeHtml(item.desc)}</p>
+      <div class="code">
+        <span class="dial">${escapeHtml(item.code)}</span>
+        <span>
+          <button type="button" data-dial="${escapeHtml(item.code)}">Dial</button>
+          <button type="button" data-copy="${escapeHtml(item.code)}">Copy</button>
+        </span>
+      </div>
+    </article>
+  `).join('');
+}
+
+async function dial(code) {
+  showTab('channels');
+  $('#ussd-input').value = '';
+  await sendUssd(code).catch((error) => showNotice(error.message, 'warn'));
+}
+
+/* ---------- Boot ---------- */
 
 async function bootstrap() {
   try {
     const data = await api(`/api/bootstrap?userId=${encodeURIComponent(userId)}`);
     applyBackendMode(data.mode);
-    if (data.journey) {
-      state.journey = data.journey;
-      state.selectedProvider = data.journey.providerSnapshot;
-      state.intent = data.journey.intent;
-      state.queryText = data.journey.queryText || '';
-      await cacheJourneyLocally();
+    state.advisoryCount = data.advisoryCount;
+    if (data.plan) {
+      state.plan = data.plan;
+      state.selected = data.plan.advisorySnapshot;
+      state.intent = data.plan.intent;
+      state.queryText = data.plan.queryText || '';
+      try {
+        const latest = await api(`/api/guidance/plans/latest?userId=${encodeURIComponent(userId)}`);
+        state.actions = latest.actions || [];
+      } catch {
+        state.actions = [];
+      }
+      await cachePlanLocally();
     } else {
-      await restoreJourneyFromCache();
+      await restorePlanFromCache();
     }
+    await idbSet('advisoryCount', state.advisoryCount).catch(() => {});
   } catch {
-    await restoreJourneyFromCache();
-    showNotice('Backend unavailable. Showing saved journey from this device if available.');
+    await restorePlanFromCache();
+    state.advisoryCount = await idbGet('advisoryCount').catch(() => null);
+    showNotice('Backend unavailable. Showing the saved plan from this device if available.', 'warn');
   }
 
   try {
@@ -565,13 +873,15 @@ async function bootstrap() {
       method: 'POST',
       body: JSON.stringify({ userId, input: '' }),
     });
-    $('#ussd-screen').textContent = ussd.display || ussd.text || '';
+    $('#ussd-screen').textContent = ussd.display || ussd.response?.text || '';
   } catch {
     $('#ussd-screen').textContent = 'USSD simulator unavailable while offline.';
   }
 
+  renderQuickDial();
+  loadPoultry();
   setBrowserOnline(navigator.onLine);
-  renderJourney();
+  renderPlan();
 }
 
 function bindEvents() {
@@ -579,24 +889,70 @@ function bindEvents() {
     tab.addEventListener('click', () => showTab(tab.dataset.tab));
   });
 
-  $('#care-form').addEventListener('submit', (event) => {
+  // Poultry stage chips and the ask-a-question shortcut are rendered/handled by delegation.
+  document.addEventListener('click', (event) => {
+    const stageBtn = event.target.closest('[data-poultry-stage]');
+    if (stageBtn) {
+      state.poultryStage = stageBtn.dataset.poultryStage;
+      renderPoultry();
+      return;
+    }
+    const ask = event.target.closest('[data-poultry-ask]');
+    if (ask) {
+      showTab('guidance');
+      showGuidanceView('search');
+      $('#guidance-input').value = ask.dataset.poultryAsk;
+      findGuidance(ask.dataset.poultryAsk);
+    }
+  });
+
+  // Delegated: buttons rendered later (e.g. quick-dial, plan preview) use data-goto/data-dial/data-copy.
+  document.addEventListener('click', (event) => {
+    const target = event.target.closest('[data-goto],[data-dial],[data-copy]');
+    if (!target) return;
+    if (target.dataset.goto) showTab(target.dataset.goto);
+    if (target.dataset.dial) dial(target.dataset.dial);
+    if (target.dataset.copy) {
+      navigator.clipboard?.writeText(target.dataset.copy)
+        .then(() => showNotice(`Copied ${target.dataset.copy}`))
+        .catch(() => showNotice(target.dataset.copy));
+    }
+  });
+
+  $('#btn-quick-query').addEventListener('click', () => dial('*384*40#'));
+
+  $('#guidance-form').addEventListener('submit', (event) => {
     event.preventDefault();
-    findCare($('#care-input').value);
+    findGuidance($('#guidance-input').value);
   });
 
   document.querySelectorAll('[data-example]').forEach((button) => {
     button.addEventListener('click', () => {
-      $('#care-input').value = button.dataset.example;
-      findCare(button.dataset.example);
+      $('#guidance-input').value = button.dataset.example;
+      findGuidance(button.dataset.example);
     });
   });
 
-  $('#btn-back-results').addEventListener('click', () => showCareView('search'));
-  $('#btn-start-journey').addEventListener('click', () => startJourney());
-  $('#btn-go-search').addEventListener('click', () => showTab('care'));
-  $('#btn-offline-action').addEventListener('click', () => saveOfflineNote());
-  $('#btn-sync-journey').addEventListener('click', () => syncActiveJourney());
-  $('#btn-retry-sync').addEventListener('click', () => syncActiveJourney());
+  $('#btn-back-results').addEventListener('click', () => showGuidanceView('search'));
+  $('#btn-save-plan').addEventListener('click', () => savePlan());
+  $('#btn-go-search').addEventListener('click', () => showTab('guidance'));
+  $('#btn-sync-plan').addEventListener('click', () => syncActivePlan());
+  $('#btn-retry-sync').addEventListener('click', () => syncActivePlan());
+  $('#btn-save-obs').addEventListener('click', () => saveObservation());
+
+  $('#plan-steps').addEventListener('change', (event) => {
+    const box = event.target.closest('input[data-step]');
+    if (box) toggleStep(Number(box.dataset.step), box.checked);
+  });
+
+  $('#obs-types').addEventListener('click', (event) => {
+    const chip = event.target.closest('[data-kind]');
+    if (!chip) return;
+    state.obsKind = chip.dataset.kind;
+    document.querySelectorAll('#obs-types [data-kind]').forEach((el) => {
+      el.setAttribute('aria-pressed', String(el === chip));
+    });
+  });
 
   document.querySelectorAll('[data-rating]').forEach((button) => {
     button.addEventListener('click', () => submitFeedback(button.dataset.rating));
@@ -610,33 +966,42 @@ function bindEvents() {
     const value = $('#sms-input').value.trim();
     if (!value) return;
     $('#sms-input').value = '';
-    sendSms(value).catch((error) => showNotice(error.message));
+    sendSms(value).catch((error) => showNotice(error.message, 'warn'));
+  });
+  document.querySelectorAll('[data-sms]').forEach((button) => {
+    button.addEventListener('click', () => sendSms(button.dataset.sms).catch((error) => showNotice(error.message, 'warn')));
   });
 
   $('#ussd-form').addEventListener('submit', (event) => {
     event.preventDefault();
     const value = $('#ussd-input').value;
     $('#ussd-input').value = '';
-    sendUssd(value).catch((error) => showNotice(error.message));
+    sendUssd(value).catch((error) => showNotice(error.message, 'warn'));
+  });
+  document.querySelectorAll('[data-ussd]').forEach((button) => {
+    button.addEventListener('click', () => sendUssd(button.dataset.ussd).catch((error) => showNotice(error.message, 'warn')));
   });
 
   window.addEventListener('online', async () => {
     setBrowserOnline(true);
     showNotice('Connection restored');
-    if (state.journey && (state.journey.syncStatus === 'pending' || state.journey.syncStatus === 'failed'
-      || state.actions.some((a) => a.status === 'pending'))) {
-      await syncActiveJourney();
-    }
+    if (hasPending()) await syncActivePlan();
   });
 
   window.addEventListener('offline', () => {
     setBrowserOnline(false);
-    showNotice('You\'re offline. Your saved healthcare journey is still available.');
+    showNotice('You\'re offline. Your saved farm plan is still available.', 'warn');
   });
 }
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => {});
+  navigator.serviceWorker.register('/sw.js')
+    .then(() => navigator.serviceWorker.ready)
+    .then(() => {
+      state.swReady = true;
+      renderTelemetry();
+    })
+    .catch(() => {});
 }
 
 bindEvents();

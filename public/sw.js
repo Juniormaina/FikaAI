@@ -1,7 +1,8 @@
-const CACHE = 'fikaai-care-v2';
+const CACHE = 'fikaai-agri-v2';
 const FILES = [
   '/',
   '/index.html',
+  '/cheatsheet.html',
   '/styles.css',
   '/app.js',
   '/manifest.webmanifest',
@@ -21,6 +22,7 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
+  if (event.request.method !== 'GET') return;
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
   event.respondWith(
     fetch(event.request)

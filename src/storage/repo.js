@@ -282,123 +282,121 @@ export function createRepo(db) {
       db.prepare('DELETE FROM offline_queue WHERE user_id = ?').run(userId);
       db.prepare('DELETE FROM messages WHERE user_id = ?').run(userId);
       db.prepare('DELETE FROM records WHERE user_id = ?').run(userId);
-      db.prepare('DELETE FROM feedback WHERE user_id = ?').run(userId);
-      db.prepare('DELETE FROM journey_actions WHERE user_id = ?').run(userId);
-      db.prepare('DELETE FROM journeys WHERE user_id = ?').run(userId);
+      db.prepare('DELETE FROM guidance_feedback WHERE user_id = ?').run(userId);
+      db.prepare('DELETE FROM plan_actions WHERE user_id = ?').run(userId);
+      db.prepare('DELETE FROM farm_plans WHERE user_id = ?').run(userId);
     },
 
-    upsertProvider(provider) {
-      const specialties = Array.isArray(provider.specialties)
-        ? provider.specialties.join(',')
-        : String(provider.specialties || '');
+    upsertAdvisory(advisory) {
       db.prepare(
-        `INSERT INTO providers (
-          id, facility_name, facility_type, location, county, specialties, specialist_name,
-          availability_status, availability_note, appointment_required, referral_required,
-          contact_information, instructions, last_updated, data_source, is_demo_data
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO advisories (
+          id, title, category, crops, regions, urgency, summary, symptoms, field_checks,
+          remediation, caution, protocol_ref, sms_en, sms_sw, last_updated, data_source, is_demo_data
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
-          facility_name = excluded.facility_name,
-          facility_type = excluded.facility_type,
-          location = excluded.location,
-          county = excluded.county,
-          specialties = excluded.specialties,
-          specialist_name = excluded.specialist_name,
-          availability_status = excluded.availability_status,
-          availability_note = excluded.availability_note,
-          appointment_required = excluded.appointment_required,
-          referral_required = excluded.referral_required,
-          contact_information = excluded.contact_information,
-          instructions = excluded.instructions,
+          title = excluded.title,
+          category = excluded.category,
+          crops = excluded.crops,
+          regions = excluded.regions,
+          urgency = excluded.urgency,
+          summary = excluded.summary,
+          symptoms = excluded.symptoms,
+          field_checks = excluded.field_checks,
+          remediation = excluded.remediation,
+          caution = excluded.caution,
+          protocol_ref = excluded.protocol_ref,
+          sms_en = excluded.sms_en,
+          sms_sw = excluded.sms_sw,
           last_updated = excluded.last_updated,
           data_source = excluded.data_source,
           is_demo_data = excluded.is_demo_data`,
       ).run(
-        provider.id,
-        provider.facility_name,
-        provider.facility_type,
-        provider.location,
-        provider.county,
-        specialties,
-        provider.specialist_name,
-        provider.availability_status,
-        provider.availability_note || null,
-        provider.appointment_required ? 1 : 0,
-        provider.referral_required ? 1 : 0,
-        provider.contact_information || null,
-        provider.instructions || null,
-        provider.last_updated,
-        provider.data_source,
-        provider.is_demo_data === false ? 0 : 1,
+        advisory.id,
+        advisory.title,
+        advisory.category,
+        JSON.stringify(advisory.crops || []),
+        JSON.stringify(advisory.regions || []),
+        advisory.urgency,
+        advisory.summary,
+        JSON.stringify(advisory.symptoms || []),
+        JSON.stringify(advisory.field_checks || []),
+        advisory.remediation,
+        advisory.caution || null,
+        advisory.protocol_ref || null,
+        advisory.sms_en || null,
+        advisory.sms_sw || null,
+        advisory.last_updated,
+        advisory.data_source,
+        advisory.is_demo_data === false ? 0 : 1,
       );
-      return this.getProvider(provider.id);
+      return this.getAdvisory(advisory.id);
     },
 
-    countProviders() {
-      const row = db.prepare('SELECT COUNT(*) AS count FROM providers').get();
+    countAdvisories() {
+      const row = db.prepare('SELECT COUNT(*) AS count FROM advisories').get();
       return Number(row?.count || 0);
     },
 
-    getProvider(id) {
-      return mapProvider(db.prepare('SELECT * FROM providers WHERE id = ?').get(id));
+    getAdvisory(id) {
+      return mapAdvisory(db.prepare('SELECT * FROM advisories WHERE id = ?').get(id));
     },
 
-    listProviders() {
-      return db.prepare('SELECT * FROM providers ORDER BY facility_name ASC').all().map(mapProvider);
+    listAdvisories() {
+      return db.prepare('SELECT * FROM advisories ORDER BY title ASC').all().map(mapAdvisory);
     },
 
-    searchProviders({ specialty = null, location = null } = {}) {
-      let sql = 'SELECT * FROM providers WHERE 1=1';
+    searchAdvisories({ crop = null } = {}) {
+      let sql = 'SELECT * FROM advisories WHERE 1=1';
       const params = [];
-      if (specialty) {
-        sql += ' AND lower(specialties) LIKE ?';
-        params.push(`%${String(specialty).toLowerCase()}%`);
+      if (crop) {
+        // crops is a JSON array of lowercase names, e.g. ["maize","beans"].
+        sql += ' AND lower(crops) LIKE ?';
+        params.push(`%"${String(crop).toLowerCase()}"%`);
       }
-      if (location) {
-        sql += ' AND (lower(county) LIKE ? OR lower(location) LIKE ?)';
-        const needle = `%${String(location).toLowerCase()}%`;
-        params.push(needle, needle);
-      }
-      sql += ' ORDER BY facility_name ASC';
-      return db.prepare(sql).all(...params).map(mapProvider);
+      sql += ' ORDER BY title ASC';
+      return db.prepare(sql).all(...params).map(mapAdvisory);
     },
 
-    createJourney({ userId, providerId, status, syncStatus, intent, queryText, providerSnapshot }) {
+    clearAdvisories() {
+      db.prepare('DELETE FROM advisories').run();
+    },
+
+    createPlan({ userId, advisoryId, status, syncStatus, intent, queryText, advisorySnapshot }) {
       this.ensureUser(userId);
       const id = crypto.randomUUID();
       const now = new Date().toISOString();
       db.prepare(
-        `INSERT INTO journeys (
-          id, user_id, provider_id, status, sync_status, intent_json, query_text, provider_snapshot, created_at, updated_at
+        `INSERT INTO farm_plans (
+          id, user_id, advisory_id, status, sync_status, intent_json, query_text, advisory_snapshot, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         id,
         userId,
-        providerId,
+        advisoryId,
         status,
         syncStatus,
         intent ? JSON.stringify(intent) : null,
         queryText || null,
-        JSON.stringify(providerSnapshot),
+        JSON.stringify(advisorySnapshot),
         now,
         now,
       );
-      return this.getJourney(id, userId);
+      return this.getPlan(id, userId);
     },
 
-    getJourney(id, userId) {
-      return mapJourney(
-        db.prepare('SELECT * FROM journeys WHERE id = ? AND user_id = ?').get(id, userId),
+    getPlan(id, userId) {
+      return mapPlan(
+        db.prepare('SELECT * FROM farm_plans WHERE id = ? AND user_id = ?').get(id, userId),
       );
     },
 
-    latestJourney(userId) {
-      return mapJourney(
-        db.prepare('SELECT * FROM journeys WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1').get(userId),
+    latestPlan(userId) {
+      return mapPlan(
+        db.prepare('SELECT * FROM farm_plans WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1').get(userId),
       );
     },
 
-    updateJourney(id, userId, patch) {
+    updatePlan(id, userId, patch) {
       const sets = [];
       const params = [];
       if (patch.status !== undefined) {
@@ -409,51 +407,51 @@ export function createRepo(db) {
         sets.push('sync_status = ?');
         params.push(patch.syncStatus);
       }
-      if (patch.providerSnapshot !== undefined) {
-        sets.push('provider_snapshot = ?');
-        params.push(JSON.stringify(patch.providerSnapshot));
+      if (patch.advisorySnapshot !== undefined) {
+        sets.push('advisory_snapshot = ?');
+        params.push(JSON.stringify(patch.advisorySnapshot));
       }
-      if (!sets.length) return this.getJourney(id, userId);
+      if (!sets.length) return this.getPlan(id, userId);
       sets.push('updated_at = ?');
       params.push(new Date().toISOString(), id, userId);
-      db.prepare(`UPDATE journeys SET ${sets.join(', ')} WHERE id = ? AND user_id = ?`).run(...params);
-      return this.getJourney(id, userId);
+      db.prepare(`UPDATE farm_plans SET ${sets.join(', ')} WHERE id = ? AND user_id = ?`).run(...params);
+      return this.getPlan(id, userId);
     },
 
-    addJourneyAction({ journeyId, userId, actionType, payload, status = 'pending' }) {
+    addPlanAction({ planId, userId, actionType, payload, status = 'pending' }) {
       this.ensureUser(userId);
       const id = crypto.randomUUID();
       const createdAt = new Date().toISOString();
       db.prepare(
-        `INSERT INTO journey_actions (
-          id, journey_id, user_id, action_type, payload_json, status, created_at, completed_at
+        `INSERT INTO plan_actions (
+          id, plan_id, user_id, action_type, payload_json, status, created_at, completed_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL)`,
       ).run(
         id,
-        journeyId,
+        planId,
         userId,
         actionType,
         payload ? JSON.stringify(payload) : null,
         status,
         createdAt,
       );
-      return mapJourneyAction(
-        db.prepare('SELECT * FROM journey_actions WHERE id = ?').get(id),
+      return mapPlanAction(
+        db.prepare('SELECT * FROM plan_actions WHERE id = ?').get(id),
       );
     },
 
-    listJourneyActions(journeyId, status = null) {
+    listPlanActions(planId, status = null) {
       if (status) {
         return db.prepare(
-          'SELECT * FROM journey_actions WHERE journey_id = ? AND status = ? ORDER BY created_at ASC',
-        ).all(journeyId, status).map(mapJourneyAction);
+          'SELECT * FROM plan_actions WHERE plan_id = ? AND status = ? ORDER BY created_at ASC',
+        ).all(planId, status).map(mapPlanAction);
       }
       return db.prepare(
-        'SELECT * FROM journey_actions WHERE journey_id = ? ORDER BY created_at ASC',
-      ).all(journeyId).map(mapJourneyAction);
+        'SELECT * FROM plan_actions WHERE plan_id = ? ORDER BY created_at ASC',
+      ).all(planId).map(mapPlanAction);
     },
 
-    updateJourneyAction(id, patch) {
+    updatePlanAction(id, patch) {
       const sets = [];
       const params = [];
       if (patch.status !== undefined) {
@@ -466,34 +464,27 @@ export function createRepo(db) {
       }
       if (!sets.length) return;
       params.push(id);
-      db.prepare(`UPDATE journey_actions SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+      db.prepare(`UPDATE plan_actions SET ${sets.join(', ')} WHERE id = ?`).run(...params);
     },
 
-    createFeedback({ userId, journeyId = null, rating, comment = null }) {
+    createFeedback({ userId, planId = null, rating, comment = null }) {
       this.ensureUser(userId);
       const id = crypto.randomUUID();
       const createdAt = new Date().toISOString();
       db.prepare(
-        `INSERT INTO feedback (id, user_id, journey_id, rating, comment, created_at)
+        `INSERT INTO guidance_feedback (id, user_id, plan_id, rating, comment, created_at)
          VALUES (?, ?, ?, ?, ?, ?)`,
-      ).run(id, userId, journeyId, rating, comment, createdAt);
-      return {
-        id,
-        userId,
-        journeyId,
-        rating,
-        comment,
-        createdAt,
-      };
+      ).run(id, userId, planId, rating, comment, createdAt);
+      return { id, userId, planId, rating, comment, createdAt };
     },
 
     listFeedback(userId) {
       return db.prepare(
-        'SELECT * FROM feedback WHERE user_id = ? ORDER BY created_at DESC',
+        'SELECT * FROM guidance_feedback WHERE user_id = ? ORDER BY created_at DESC',
       ).all(userId).map((row) => ({
         id: row.id,
         userId: row.user_id,
-        journeyId: row.journey_id,
+        planId: row.plan_id,
         rating: row.rating,
         comment: row.comment,
         createdAt: row.created_at,
@@ -502,70 +493,61 @@ export function createRepo(db) {
   };
 }
 
-function mapProvider(row) {
+function parseJson(value, fallback) {
+  try {
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function mapAdvisory(row) {
   if (!row) return null;
   return {
     id: row.id,
-    facility_name: row.facility_name,
-    facility_type: row.facility_type,
-    location: row.location,
-    county: row.county,
-    specialties: String(row.specialties || '').split(',').map((s) => s.trim()).filter(Boolean),
-    specialist_name: row.specialist_name,
-    availability_status: row.availability_status,
-    availability_note: row.availability_note,
-    appointment_required: Boolean(row.appointment_required),
-    referral_required: Boolean(row.referral_required),
-    contact_information: row.contact_information,
-    instructions: row.instructions,
+    title: row.title,
+    category: row.category,
+    crops: parseJson(row.crops, []),
+    regions: parseJson(row.regions, []),
+    urgency: row.urgency,
+    summary: row.summary,
+    symptoms: parseJson(row.symptoms, []),
+    field_checks: parseJson(row.field_checks, []),
+    remediation: row.remediation,
+    caution: row.caution,
+    protocol_ref: row.protocol_ref,
+    sms_en: row.sms_en,
+    sms_sw: row.sms_sw,
     last_updated: row.last_updated,
     data_source: row.data_source,
     is_demo_data: Boolean(row.is_demo_data),
   };
 }
 
-function mapJourney(row) {
+function mapPlan(row) {
   if (!row) return null;
-  let intent = null;
-  let providerSnapshot = null;
-  try {
-    intent = row.intent_json ? JSON.parse(row.intent_json) : null;
-  } catch {
-    intent = null;
-  }
-  try {
-    providerSnapshot = row.provider_snapshot ? JSON.parse(row.provider_snapshot) : null;
-  } catch {
-    providerSnapshot = null;
-  }
   return {
     id: row.id,
     userId: row.user_id,
-    providerId: row.provider_id,
+    advisoryId: row.advisory_id,
     status: row.status,
     syncStatus: row.sync_status,
-    intent,
+    intent: parseJson(row.intent_json, null),
     queryText: row.query_text,
-    providerSnapshot,
+    advisorySnapshot: parseJson(row.advisory_snapshot, null),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
-function mapJourneyAction(row) {
+function mapPlanAction(row) {
   if (!row) return null;
-  let payload = null;
-  try {
-    payload = row.payload_json ? JSON.parse(row.payload_json) : null;
-  } catch {
-    payload = null;
-  }
   return {
     id: row.id,
-    journeyId: row.journey_id,
+    planId: row.plan_id,
     userId: row.user_id,
     actionType: row.action_type,
-    payload,
+    payload: parseJson(row.payload_json, null),
     status: row.status,
     createdAt: row.created_at,
     completedAt: row.completed_at,

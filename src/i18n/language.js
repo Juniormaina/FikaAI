@@ -7,6 +7,7 @@ const SWAHILI = new Set([
   'mifuko', 'mfuko', 'jinsi', 'taarifa', 'chagua', 'maharagwe', 'mchele', 'maziwa',
   'nyanya', 'ngano', 'kahawa', 'sukari', 'lita', 'jumla', 'yote', 'zote', 'kuwa',
   'andika', 'uliza', 'angalia', 'rudi', 'habari', 'shikamoo', 'niaje',
+  'kuku', 'vifaranga', 'mayai', 'chanjo', 'kuhara', 'damu', 'wanakufa', 'majani', 'manjano', 'wadudu', 'ugonjwa', 'shamba', 'mimea', 'mbolea', 'viwavi', 'tatizo', 'zao',
 ]);
 
 const ENGLISH = new Set([
@@ -14,6 +15,7 @@ const ENGLISH = new Set([
   'help', 'record', 'recorded', 'maize', 'bags', 'bag', 'what', 'show', 'amount',
   'english', 'market', 'price', 'change', 'delete', 'total', 'please', 'hello',
   'weather', 'view', 'list', 'update', 'calculate', 'three', 'for', 'can',
+  'leaf', 'leaves', 'yellowing', 'pests', 'pest', 'plant', 'crop', 'farm', 'disease', 'cattle',
 ]);
 
 export function detectLanguage(text) {
