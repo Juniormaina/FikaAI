@@ -6,6 +6,3 @@ data/
 *.sqlite-wal
 *.sqlite-shm
 .venv-media/
-hackathon-deliverables/work/
-hackathon-deliverables/*.mp4
-hackathon-deliverables/*.pptx

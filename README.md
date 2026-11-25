@@ -209,12 +209,6 @@ Recommended sequence:
 9. Open the SMS / USSD tab and try `*384*40#` or an SMS such as `Mahindi yangu yana wadudu Kiambu`
 10. Open `/cheatsheet.html` to show the printable dial sheet
 
-See also:
-
-* [`docs/JUDGE_WALKTHROUGH.md`](docs/JUDGE_WALKTHROUGH.md)
-* [`docs/HACKATHON_DEMO_CHECKLIST.md`](docs/HACKATHON_DEMO_CHECKLIST.md)
-* [`docs/DEMO_RECORDING_PLAN.md`](docs/DEMO_RECORDING_PLAN.md)
-
 ### Layout
 
 ```text
@@ -227,5 +221,4 @@ src/channels       SMS / USSD simulators
 public             Field-ready PWA (IndexedDB + service worker) and dial sheet
 scripts/seed.js    Demo advisory seeding
 tests              Vitest
-docs               Submission / demo materials
 ```
