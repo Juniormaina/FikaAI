@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { createTestApp, listen } from './helpers.js';
 import { detectHazard } from '../src/guidance/safety.js';
@@ -31,6 +32,11 @@ describe('poultry life-stage guide', () => {
     }
     expect(guide.vaccinationSchedule.length).toBeGreaterThan(4);
     expect(guide.disclaimer).toMatch(/veterinary officer|animal health provider/i);
+  });
+
+  it('has a static copy in public/ that matches the source (run npm run build:poultry)', () => {
+    const file = new URL('../public/poultry-guide.json', import.meta.url);
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual(getPoultryGuide());
   });
 
   it('is served by the API', async () => {

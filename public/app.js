@@ -113,14 +113,26 @@ async function restorePlanFromCache() {
 
 /* ---------- Helpers ---------- */
 
+const API_TIMEOUT_MS = 8000;
+
 async function api(path, options = {}) {
-  const response = await fetch(path, {
-    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
-    ...options,
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || response.statusText);
-  return data;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  try {
+    const response = await fetch(path, {
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+      ...options,
+      signal: controller.signal,
+    });
+    const isJson = (response.headers.get('content-type') || '').includes('json');
+    const data = isJson ? await response.json().catch(() => ({})) : {};
+    if (!response.ok) throw new Error(data.error || response.statusText || 'Request failed');
+    // A static host can answer /api/* with an HTML page; treat that as "backend unavailable".
+    if (!isJson) throw new Error('Backend unavailable');
+    return data;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function escapeHtml(value) {
@@ -245,13 +257,17 @@ const POULTRY_SECTIONS = [
 ];
 
 async function loadPoultry() {
-  try {
-    const guide = await api('/api/poultry');
-    state.poultry = guide;
-    await idbSet('poultryGuide', guide).catch(() => {});
-  } catch {
-    state.poultry = await idbGet('poultryGuide').catch(() => null);
+  // Server first, then the static copy shipped with the app, then the copy saved on this device.
+  let guide = null;
+  for (const path of ['/api/poultry', '/poultry-guide.json']) {
+    try {
+      const candidate = await api(path);
+      if (candidate?.stages?.length) { guide = candidate; break; }
+    } catch { /* try the next source */ }
   }
+  if (guide) await idbSet('poultryGuide', guide).catch(() => {});
+  else guide = await idbGet('poultryGuide').catch(() => null);
+  state.poultry = guide;
   renderPoultry();
 }
 
@@ -259,7 +275,7 @@ function renderPoultry() {
   const guide = state.poultry;
   const stagesEl = $('#poultry-stages');
   const stageEl = $('#poultry-stage');
-  if (!guide) {
+  if (!guide?.stages?.length) {
     stagesEl.innerHTML = '';
     stageEl.innerHTML = '<div class="card"><p>The poultry guide is not on this device yet. Open this tab once while online and it will be saved for offline use.</p></div>';
     return;
@@ -842,6 +858,11 @@ async function dial(code) {
 /* ---------- Boot ---------- */
 
 async function bootstrap() {
+  // Draw immediately from what is saved on this device; the network only refreshes it.
+  await restorePlanFromCache();
+  setBrowserOnline(navigator.onLine);
+  renderPlan();
+
   try {
     const data = await api(`/api/bootstrap?userId=${encodeURIComponent(userId)}`);
     applyBackendMode(data.mode);
