@@ -23,9 +23,12 @@ services:
       - key: AT_WEBHOOK_SECRET
         generateValue: true
       # Set these in the Render dashboard (not in git): AT_USERNAME, AT_API_KEY, AT_SENDER_ID, MODELSCOPE_API_KEY
-      # SQLite needs a persistent disk or data is lost on every deploy (paid plans only):
+      # Free plan: the SQLite file resets on each deploy or restart. That is fine while in development.
+      # Before launch, either attach a paid persistent disk (uncomment below) or move to a hosted database.
       # - key: DATABASE_PATH
       #   value: /var/data/fikaai.sqlite
+    plan: free
+    # plan: starter
     # disk:
     #   name: fikaai-data
     #   mountPath: /var/data

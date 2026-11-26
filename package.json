@@ -14,7 +14,8 @@
     "test": "vitest run --pool=threads --maxWorkers=1",
     "smoke:modelscope": "node scripts/smoke-modelscope.js",
     "eval:qwen": "node scripts/eval-qwen.js",
-    "build:poultry": "node scripts/build-poultry-json.js"
+    "build:poultry": "node scripts/build-poultry-json.js",
+    "backup": "node scripts/backup.js"
   },
   "dependencies": {
     "express": "^4.21.2"
