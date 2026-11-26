@@ -23,10 +23,12 @@ services:
       - key: AT_WEBHOOK_SECRET
         generateValue: true
       # Set these in the Render dashboard (not in git): AT_USERNAME, AT_API_KEY, AT_SENDER_ID, MODELSCOPE_API_KEY
-      # SQLite needs a persistent disk or data is lost on every deploy (paid plans only):
-      # - key: DATABASE_PATH
-      #   value: /var/data/fikaai.sqlite
-    # disk:
-    #   name: fikaai-data
-    #   mountPath: /var/data
-    #   sizeGB: 1
+      # SQLite lives on the persistent disk below so data survives deploys.
+      - key: DATABASE_PATH
+        value: /var/data/fikaai.sqlite
+    # Persistent disks need a paid instance type (applying this blueprint moves the service off the free plan).
+    plan: starter
+    disk:
+      name: fikaai-data
+      mountPath: /var/data
+      sizeGB: 1
