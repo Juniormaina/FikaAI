@@ -39,6 +39,7 @@ export function loadConfig(env = process.env) {
     atUsername: String(env.AT_USERNAME || '').trim(),
     atApiKey: String(env.AT_API_KEY || '').trim(),
     atSenderId: String(env.AT_SENDER_ID || '').trim(),
+    atWebhookSecret: String(env.AT_WEBHOOK_SECRET || '').trim(),
     atSandbox: flag(env.AT_SANDBOX, false),
     defaultUserId: env.DEFAULT_USER_ID || 'demo-user',
     connectivityMode: String(env.CONNECTIVITY_MODE || '').toLowerCase() === 'offline' ? 'offline' : 'online',

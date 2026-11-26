@@ -190,7 +190,10 @@ See `.env.example`. Never commit real secrets.
 | `AUTH_REQUIRED` | `false` | `true` makes every user API call need a signed-in session (set this in production) |
 | `AUTH_DEMO_CODES` | `false` | `true` returns the SMS code in the API response — local demos only, never in production |
 | `AT_USERNAME`, `AT_API_KEY` | _(empty)_ | Africa's Talking SMS credentials; without them codes are printed to the server log |
+| `AT_WEBHOOK_SECRET` | _(empty)_ | Enables the Africa's Talking callbacks; they return 503 until set |
 | `AT_SENDER_ID`, `AT_SANDBOX` | _(empty)_, `false` | Optional sender ID and sandbox switch |
+
+**Africa's Talking callbacks.** Point your USSD callback at `https://YOUR-HOST/api/at/ussd?key=AT_WEBHOOK_SECRET` and your inbound SMS callback at `https://YOUR-HOST/api/at/sms?key=AT_WEBHOOK_SECRET`. The network-reported phone number becomes the user, so USSD and SMS activity (sales, language, plans) appears in the same account the farmer signs in to on the web. USSD screens are trimmed to 182 characters. Africa's Talking does not sign callbacks, so keep the secret private and serve over HTTPS. These routes have been tested with simulated requests, not against the live network.
 
 Sign-in is phone number + 6-digit SMS code (10-minute expiry, 3 codes per 15 minutes, 5 attempts), with 30-day sessions stored as hashes. The Africa's Talking sender is written to the provider's documented API but has not been run against a live account. Sign-in needs the Node backend; the static Vercel build has no API and runs in local mode.
 
@@ -200,7 +203,7 @@ Sign-in is phone number + 6-digit SMS code (10-minute expiry, 3 codes per 15 min
 npm test
 ```
 
-76 tests across agent, channels, offline queue, data, LLM provider, e2e and guidance suites.
+82 tests across agent, channels, offline queue, data, LLM provider, e2e and guidance suites.
 
 Guidance coverage includes intent fallback, malformed AI rejection, hazard safety, advisory ranking, plan create, pending action, sync, feedback and offline-backend search fallback.
 

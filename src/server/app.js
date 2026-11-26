@@ -11,6 +11,7 @@ import { createGateway } from '../gateway/gateway.js';
 import { createTextChannel } from '../channels/text-channel.js';
 import { getPoultryGuide } from '../guidance/poultry-guide.js';
 import { createUssdChannel } from '../channels/ussd.js';
+import { registerAfricasTalkingRoutes } from './africastalking.js';
 import {
   AuthError,
   createAfricasTalkingSender,
@@ -79,6 +80,7 @@ export function createApp(options = {}) {
     next();
   });
   app.use(express.json({ limit: '32kb' }));
+  app.use(express.urlencoded({ extended: false, limit: '8kb' }));
   app.use('/api', (req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
     next();
@@ -104,6 +106,8 @@ export function createApp(options = {}) {
     if (session) req.auth = session;
     next();
   });
+
+  registerAfricasTalkingRoutes({ app, config, channels, sender, wrap, httpError });
 
   // Phone + SMS code sign-in. Responses never reveal whether a number already has an account.
   app.post('/api/auth/request-code', wrap(async (req, res) => {
