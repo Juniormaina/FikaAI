@@ -1,0 +1,32 @@
+# Render blueprint for the FikaAI Node backend. The same service also serves the web app.
+services:
+  - type: web
+    name: fikaai
+    runtime: node
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: HOST
+        value: 0.0.0.0
+      - key: LLM_PROVIDER
+        value: auto
+      - key: OLLAMA_ENABLED
+        value: "false"
+      # Keep false until SMS sending works (Africa's Talking keys below), otherwise nobody can sign in.
+      - key: AUTH_REQUIRED
+        value: "false"
+      - key: AUTH_DEMO_CODES
+        value: "false"
+      - key: AT_WEBHOOK_SECRET
+        generateValue: true
+      # Set these in the Render dashboard (not in git): AT_USERNAME, AT_API_KEY, AT_SENDER_ID, MODELSCOPE_API_KEY
+      # SQLite needs a persistent disk or data is lost on every deploy (paid plans only):
+      # - key: DATABASE_PATH
+      #   value: /var/data/fikaai.sqlite
+    # disk:
+    #   name: fikaai-data
+    #   mountPath: /var/data
+    #   sizeGB: 1

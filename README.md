@@ -194,6 +194,15 @@ See `.env.example`. Never commit real secrets.
 
 Sign-in is phone number + 6-digit SMS code (10-minute expiry, 3 codes per 15 minutes, 5 attempts), with 30-day sessions stored as hashes. The Africa's Talking sender is written to the provider's documented API but has not been run against a live account. Sign-in needs the Node backend; the static Vercel build has no API and runs in local mode.
 
+## Deployment
+
+The app is deployed in two places:
+
+* **Render** (`https://fikaai.onrender.com`) runs the Node backend and also serves the web app, so sign-in, SMS, USSD and the Africa's Talking callbacks work there. `render.yaml` is a blueprint with the settings it needs (`HOST=0.0.0.0`, health check, generated `AT_WEBHOOK_SECRET`). Free instances sleep when idle, so the first request after a quiet period can take about 30 seconds. SQLite is wiped on every deploy unless you attach a paid persistent disk (see the commented lines in `render.yaml`).
+* **Vercel** (`https://fikaai.vercel.app`) serves the static files only. `vercel.json` forwards `/api/*` to the Render backend so the Vercel site gets the same features. If the backend is asleep or down, the app falls back to its cached, offline mode.
+
+Point Africa's Talking callbacks at the Render URL, not Vercel.
+
 ### Testing
 
 ```bash
