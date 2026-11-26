@@ -139,7 +139,7 @@ const API_TIMEOUT_MS = 8000;
 
 async function api(path, options = {}) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), options.timeoutMs || API_TIMEOUT_MS);
   try {
     const response = await fetch(path, {
       headers: {
@@ -984,7 +984,8 @@ async function submitSignIn(event) {
 
 async function initAuth() {
   try {
-    const health = await api('/api/health');
+    // A sleeping free-tier host can take ~30s to wake, so allow longer here.
+    const health = await api('/api/health', { timeoutMs: 35000 });
     authState.enabled = Boolean(health.auth?.enabled);
     authState.required = Boolean(health.auth?.required);
   } catch {
@@ -1007,7 +1008,7 @@ async function bootstrap() {
   await restorePlanFromCache();
   setBrowserOnline(navigator.onLine);
   renderPlan();
-  await initAuth();
+  initAuth(); // background: must not delay drawing the cached plan
 
   try {
     const data = await api(`/api/bootstrap?userId=${encodeURIComponent(userId)}`);
